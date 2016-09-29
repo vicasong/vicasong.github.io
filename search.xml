@@ -5,7 +5,7 @@
     
     <entry>
       <title><![CDATA[百般波折的Hadoop编译]]></title>
-      <url>http://yoursite.com/2016/09/26/hadoop-make-install/</url>
+      <url>https://golveo.cn/2016/09/26/hadoop-make-install/</url>
       <content type="html"><![CDATA[<p>终于不能忍了，每次使用hadoop都出native库警告，于是决定编译hadoop，也是走了不少弯路。唯一参考了官方文档，当初居然没想到去百度一篇别人编译的过程，先填坑，哎~ 说多了都是泪。</p>
 <a id="more"></a>
 <h1 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h1><p>首先从官方下载hadoop2.6.4的源码包（Hadoop分布式集群安装一文有介绍），同时查看了官方文档对于Native Bulid的需求描述：</p>
@@ -72,7 +72,7 @@ make: *** [sample1.o] Error 127
     
     <entry>
       <title><![CDATA[Hadoop实战 – Apache访问日志]]></title>
-      <url>http://yoursite.com/2016/09/22/hadoop-apache-accesslog/</url>
+      <url>https://golveo.cn/2016/09/22/hadoop-apache-accesslog/</url>
       <content type="html"><![CDATA[<p>本示例通过mapreduce计算任务实现对apache访问日志的解析存储和分析，将分析记录存储于HBase数据库中，该示例只是一个日志处理环节，后续处理可进一步扩充。<br><a id="more"></a></p>
 <h1 id="日志说明"><a href="#日志说明" class="headerlink" title="日志说明"></a>日志说明</h1><p>在apache目录配置文件（<em>/etc/httpd/conf/httpd.conf</em>）中有如下配置：</p>
 <figure class="highlight bash"><figcaption><span>httpd.conf</span></figcaption><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line"><span class="comment"># The following directives define some format nicknames for use with</span></div><div class="line"><span class="comment"># a CustomLog directive (see below).</span></div><div class="line"><span class="comment">#</span></div><div class="line">LogFormat <span class="string">"%h %l %u %t \"%r\" %&gt;s %b \"%&#123;Referer&#125;i\" \"%&#123;User-Agent&#125;i\""</span> combined</div><div class="line">LogFormat <span class="string">"%h %l %u %t \"%r\" %&gt;s %b"</span> common</div><div class="line">LogFormat <span class="string">"%&#123;Referer&#125;i -&gt; %U"</span> referer</div><div class="line">LogFormat <span class="string">"%&#123;User-agent&#125;i"</span> agent</div><div class="line"></div><div class="line"><span class="comment"># For a single logfile with access, agent, and referer information</span></div><div class="line"><span class="comment"># (Combined Logfile Format), use the following directive:</span></div><div class="line"><span class="comment">#</span></div><div class="line">CustomLog logs/access_log combined</div></pre></td></tr></table></figure>
@@ -296,7 +296,7 @@ access-info
     
     <entry>
       <title><![CDATA[使用脚本监控服务状态]]></title>
-      <url>http://yoursite.com/2016/09/14/service-watcher-by-shell/</url>
+      <url>https://golveo.cn/2016/09/14/service-watcher-by-shell/</url>
       <content type="html"><![CDATA[<p>通过shell脚本和定时任务实现服务的状态监控，并在服务状态异常时通报运维人员，当然这只是一个十分简单的脚本实现，可在此脚本基础上增加系统资源预警的功能。<br><a id="more"></a></p>
 <h1 id="编写思路"><a href="#编写思路" class="headerlink" title="编写思路"></a>编写思路</h1><ol>
 <li>既然是对是否启动的检测，也就是对进程是否存在的检测，即判断服务进程是否存在。</li>
@@ -316,7 +316,7 @@ access-info
     
     <entry>
       <title><![CDATA[Storm实时处理 – Nginx访问日志]]></title>
-      <url>http://yoursite.com/2016/09/10/storm-nginx-accesslog/</url>
+      <url>https://golveo.cn/2016/09/10/storm-nginx-accesslog/</url>
       <content type="html"><![CDATA[<p>此示例工程在上一篇关于Storm集群搭建的博文中提到，运行环境即为Storm+Kafka分布式集群环境，主要应用流式处理，实时解析Nginx访问日志，一般用于PV、UV统计及访问监控。该示例也起到举一反三的作用。Storm常被用于实时分析、在线机器学习、持续计算、分布式远程调用和ETL等领域。</p>
 <a id="more"></a>
 <h1 id="场景描述"><a href="#场景描述" class="headerlink" title="场景描述"></a>场景描述</h1><p>需要实时解析Nginx集群站点的访问日志，以供实时的访问分析、入侵检测、动态调整等。通过Kafka消息队列将新的访问记录传递到Storm集群，从消息队列中消费这些访问记录并解析存储，以供下一步分析。</p>
@@ -361,7 +361,7 @@ access-info
     
     <entry>
       <title><![CDATA[分布式集群 – Storm搭建]]></title>
-      <url>http://yoursite.com/2016/09/09/storm-distribute-install/</url>
+      <url>https://golveo.cn/2016/09/09/storm-distribute-install/</url>
       <content type="html"><![CDATA[<p>Storm分布式集群搭建的示例，搭建环境基于上一篇HBase集群环境后的主机环境，但二者并无直接依赖，Storm集群需要依赖Zookeeper集群，可参见前几篇关于集群搭建的博文。<br><a id="more"></a></p>
 <h1 id="获取Strom"><a href="#获取Strom" class="headerlink" title="获取Strom"></a>获取Strom</h1><p>通过访问<a href="http://storm.apache.org/downloads.html" target="_blank" rel="external">Apache Storm官方下载页</a>获取新版本的Storm下载。以下安装以1.02版本为例。</p>
 <p>将下载好的storm上传到虚拟机集群（当然也可以直接使用<code>wget</code>），并解压缩。</p>
@@ -385,7 +385,7 @@ access-info
     
     <entry>
       <title><![CDATA[分布式集群 – HBase搭建]]></title>
-      <url>http://yoursite.com/2016/09/09/hbase-distribute-install/</url>
+      <url>https://golveo.cn/2016/09/09/hbase-distribute-install/</url>
       <content type="html"><![CDATA[<p>HBase分布式集群搭建的示例，搭建环境以Hive集群搭建为基础，且二者并无直接依赖关系，只是按照搭建顺序而已，请勿误解。搭建过程可参考前几篇集群搭建过程。<br><a id="more"></a></p>
 <h1 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h1><p>Hbase下载解压后，进入配置文件目录：<em>./conf</em>.</p>
 <ul>
@@ -410,7 +410,7 @@ access-info
     
     <entry>
       <title><![CDATA[分布式集群 – Hive搭建]]></title>
-      <url>http://yoursite.com/2016/09/08/hive-distribute-install/</url>
+      <url>https://golveo.cn/2016/09/08/hive-distribute-install/</url>
       <content type="html"><![CDATA[<p>Hive分布式集群搭建的示例，按照顺序，该搭建环境在Kafka集群搭建环境的基础上，但二者并无直接依赖关系。搭建过程部分可参考前几篇分布式搭建过程（内含部分通用操作提示）<br><a id="more"></a></p>
 <h1 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h1><p>由于我们使用Hive+Mysql为<strong>元数据库</strong>，所以在使用Hive前需配置Mysql数据库，Mysql数据库的安装参见《<a href="/2016/09/05/mysql-install-57">Mysql5.7的安装部署</a>》</p>
 <p>仅在<em>hdfs1</em>节点安装了Mysql数据库，其他节点以网络访问的方式访问该主机数据库即可，无需分布式的mysql数据库。</p>
@@ -449,7 +449,7 @@ access-info
     
     <entry>
       <title><![CDATA[分布式集群 – Kafka搭建]]></title>
-      <url>http://yoursite.com/2016/09/07/kafka-distribute-install/</url>
+      <url>https://golveo.cn/2016/09/07/kafka-distribute-install/</url>
       <content type="html"><![CDATA[<p>Kafka分布式集群搭建的示例，该示例搭建环境以Zookeeper集群搭建为基础，且依赖于Zookeeper集群，因此，若未搭建Zookeeper集群请先查阅：《<a href="/2016/09/06/zookeeper-distribute-install">分布式集群搭建 – Zookeeper搭建</a>》<br><a id="more"></a></p>
 <h1 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h1><p>下载解压同理，此处不再重复说明。</p>
 <h1 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h1><p>进入Kafka根目录下的<em>config</em>目录，配置<em>server.properties</em>，主要增加<code>host.name</code>和<code>port</code>配置项以及修改<code>zookeeper.connect</code>配置项，其中<code>host.name</code>为当前主机的主机名，<code>port</code>为9092端口，<code>zookeeper.connect</code>为所有主机的主机地址，中间用逗号隔开，注意一个<code>broker.id</code>配置项，它为当前主机在集群中的唯一标识Id，从0开始，必须保证每台主机的<code>broker.id</code>及<code>host.name</code>唯一。</p>
@@ -483,7 +483,7 @@ access-info
     
     <entry>
       <title><![CDATA[分布式集群 – Zookeeper搭建]]></title>
-      <url>http://yoursite.com/2016/09/06/zookeeper-distribute-install/</url>
+      <url>https://golveo.cn/2016/09/06/zookeeper-distribute-install/</url>
       <content type="html"><![CDATA[<p>Zookeeper的分布式集群搭建示例，搭建环境以Hadoop的集群搭建示例为基础，只是集群系列搭建实例的顺序安排，二者并不存在依赖关系。<br><a id="more"></a></p>
 <h1 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h1><p>安装参考Hadoop集群搭建的Hadoop下载流程，<em>tar.gz</em>文件解压即可，主要过程集中在配置上。</p>
 <h1 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h1><p>进入Zookeeper配置文件目录（<em>./conf</em>）</p>
@@ -503,7 +503,7 @@ access-info
     
     <entry>
       <title><![CDATA[分布式集群 – Hadoop搭建]]></title>
-      <url>http://yoursite.com/2016/09/05/hadoop-distribute-install/</url>
+      <url>https://golveo.cn/2016/09/05/hadoop-distribute-install/</url>
       <content type="html"><![CDATA[<p>Hadoop的分布式集群搭建示例，是在分布式节点部署准备工作基础上的首个集群搭建示例，后续集群将以此为基础。<br><a id="more"></a></p>
 <p>在搭建集群前，请确认以做好分布式节点部署的准备工作，参见《<a href="/2016/09/04/distribute-node-build-prepare">分布式节点部署准备工作</a>》</p>
 <h1 id="下载Hadoop"><a href="#下载Hadoop" class="headerlink" title="下载Hadoop"></a>下载Hadoop</h1><p>访问 <a href="http://www.apache.org/dyn/closer.cgi/hadoop/common" target="_blank" rel="external">http://www.apache.org/dyn/closer.cgi/hadoop/common</a> 网站以获取可用的镜像地址。</p>
@@ -559,7 +559,7 @@ access-info
     
     <entry>
       <title><![CDATA[Mysql5.7的安装部署]]></title>
-      <url>http://yoursite.com/2016/09/05/mysql-install-57/</url>
+      <url>https://golveo.cn/2016/09/05/mysql-install-57/</url>
       <content type="html"><![CDATA[<p>在Linux上安装mysql5.7的示例。由于默认的源一般为mysql5.1左右没，要想安装较高版本的mysql数据库，则需要手动更新源。<br><a id="more"></a></p>
 <h1 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h1><p>首先切换到root用户，执行<code>rpm -qa | grep mysql</code></p>
 <p>如果命令返回结果存在任意项，则先卸载出现的mysql相关项，以避免安装冲突或其他异常。</p>
@@ -599,7 +599,7 @@ access-info
     
     <entry>
       <title><![CDATA[分布式节点部署准备工作]]></title>
-      <url>http://yoursite.com/2016/09/04/distribute-node-build-prepare/</url>
+      <url>https://golveo.cn/2016/09/04/distribute-node-build-prepare/</url>
       <content type="html"><![CDATA[<p>分布式集群环境搭建的准备工作，包括主机名和IP地址、SSH互信等，是搭建分布式集群环境的基础和不可或缺的部分。此文将详细描述这一准备工作，是系列集群搭建的环境基础。<br><a id="more"></a></p>
 <h2 id="节点规划"><a href="#节点规划" class="headerlink" title="节点规划"></a>节点规划</h2><p>假设有三台主机用以搭建分布式集群，分别为<code>hdfs1</code>、<code>hdfs2</code>、<code>hdfs3</code>.</p>
 <p>为此，我们通过VM克隆新装的空白CentOS 6.5虚拟机依次完成三台空白节点的产生，并以唯一可用的root用户登陆配置网卡信息，参见《<a href="/2016/09/03/vm-clone-network-recover">VMware克隆虚拟机后的网卡恢复操作</a>》.</p>
@@ -652,7 +652,7 @@ access-info
     
     <entry>
       <title><![CDATA[Xsell SSH免密登陆]]></title>
-      <url>http://yoursite.com/2016/09/04/xhell-ssh-login/</url>
+      <url>https://golveo.cn/2016/09/04/xhell-ssh-login/</url>
       <content type="html"><![CDATA[<p>使用Xshell登陆远程主机，通过ssh公钥验证，免去不安全的明文密码验证，方便又快捷。<br><a id="more"></a></p>
 <p>在新建链接时选择验证方式为<code>Public Key</code>，生成一个RSA密钥，不要着急点<code>Finish</code>，在下一步中查看生成的密钥，点击<code>Save As File</code>保存为<em>id_rsa.pub</em>文件，上传到Linux，将其追加到验证文件<em>authorized_keys</em> 中即可，或者使用Linux生成的密钥导入即可。</p>
 <p>相关互信介绍参见《<a href="/2016/09/04/distribute-node-ssh">分布式节点SSH互信</a>》</p>
@@ -661,7 +661,7 @@ access-info
     
     <entry>
       <title><![CDATA[分布式节点SSH互信]]></title>
-      <url>http://yoursite.com/2016/09/04/distribute-node-ssh/</url>
+      <url>https://golveo.cn/2016/09/04/distribute-node-ssh/</url>
       <content type="html"><![CDATA[<p>SSH互信，即主机间通过SSH公钥验证，从而取代繁琐且不安全的明文密码，带给主机通信极大的便捷和安全。<br><a id="more"></a></p>
 <h1 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h1><p>SSH通过用户目录下<em>.ssh/authorized_keys</em>文件对访问者的身份进行鉴别，从而实现<strong>免密码</strong>访问，在分布式集群搭建中的使用极为重要。</p>
 <p>首先，各节点能通过各自IP地址进行通讯，即网络正常</p>
@@ -686,7 +686,7 @@ access-info
     
     <entry>
       <title><![CDATA[VMware克隆虚拟机后的网卡恢复操作]]></title>
-      <url>http://yoursite.com/2016/09/03/vm-clone-network-recover/</url>
+      <url>https://golveo.cn/2016/09/03/vm-clone-network-recover/</url>
       <content type="html"><![CDATA[<p>同时运行通过VM克隆的虚拟主机一般会发生网卡冲突的情况，需手动对网络配置文件进行修改以解决该问题。<br><a id="more"></a></p>
 <p>通过<code>VM–&gt;Manage–&gt;Clone..</code>命令对已关闭的虚拟机进行克隆，这比直接手动复制虚拟机文件要方便的多，尤其是在克隆时会为该虚拟机生成新的网卡MAC，而手动复制的虚拟机镜像在导入到VM中时一般会询问该虚拟机是通过复制产生的还是移动文件产生的，对应操作为生成新网卡MAC和什么都不操作。</p>
 <p>虽然有新的MAC可用，但复制/克隆后的系统文件是一致的，即网络配置文件一致，需手动修改以避免MAC冲突，在 <em>/etc/udev/rules.d/70-persistent-net.rules</em> 文件中会生成新生成的网卡信息包括MAC地址，但由于原本存在复制的 <strong>eth0</strong> 网卡信息，所以系统会认为是新网卡，则生成的有效网卡信息<code>NAME</code>为<code>eth1</code> ，所以，只需修改其<code>NAME</code>为<code>eth0</code>并删除原来的<strong>eth0</strong>的信息，同时记录<code>ATTR(address)=xx:xx:xx:xx:xx:xx</code>这串MAC地址用以更改网卡IP配置信息中的MAC与其对应，确保IP设置对该网卡MAC生效。<br>故修改 <em>/etc/sysconfig/network-scripts/ifcfg-eth0</em> 文件中的 <strong>HWADDR</strong> 字段为该MAC地址，注意到所有生成的MAC地址均以 <em>00:0C:29</em> 为起始，随机生成后面的三个段，所以修改前面固定的这三个段是无效的。</p>
@@ -701,7 +701,7 @@ access-info
     
     <entry>
       <title><![CDATA[C#使用RawInput实现自由组合快捷键]]></title>
-      <url>http://yoursite.com/2015/05/29/cs-rowinput-look/</url>
+      <url>https://golveo.cn/2015/05/29/cs-rowinput-look/</url>
       <content type="html"><![CDATA[<p>本文是我在大二初即2015年5月份写的一篇关于C#任意组合快捷键，当初是自己有这方面的需求，在百度搜索上找了两天无果，最后在“外面的世界”找到了相关的介绍，然后自己实现了该需求。<br><a id="more"></a></p>
 <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>使用C#语言做一些客户端应用时，会较长用到全局快捷键功能，而就关于C#全局快捷键的创建，较常使用的方法不外乎以下两种：</p>
 <ul>

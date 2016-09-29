@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>VicaSong</title>
-  <subtitle>The Blog Best For Vica</subtitle>
+  <subtitle>Just little site for vica</subtitle>
   <link href="/atom.xml" rel="self"/>
   
-  <link href="http://yoursite.com/"/>
+  <link href="https://golveo.cn/"/>
   <updated>2016-09-29T13:57:59.126Z</updated>
-  <id>http://yoursite.com/</id>
+  <id>https://golveo.cn/</id>
   
   <author>
-    <name>海蓝vica</name>
+    <name>海蓝Vica</name>
     
   </author>
   
@@ -17,8 +17,8 @@
   
   <entry>
     <title>百般波折的Hadoop编译</title>
-    <link href="http://yoursite.com/2016/09/26/hadoop-make-install/"/>
-    <id>http://yoursite.com/2016/09/26/hadoop-make-install/</id>
+    <link href="https://golveo.cn/2016/09/26/hadoop-make-install/"/>
+    <id>https://golveo.cn/2016/09/26/hadoop-make-install/</id>
     <published>2016-09-26T12:11:23.000Z</published>
     <updated>2016-09-29T13:57:59.126Z</updated>
     
@@ -91,19 +91,19 @@ make: *** [sample1.o] Error 127
     
     </summary>
     
-      <category term="bigdata" scheme="http://yoursite.com/categories/bigdata/"/>
+      <category term="bigdata" scheme="https://golveo.cn/categories/bigdata/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="hadoop" scheme="http://yoursite.com/tags/hadoop/"/>
+      <category term="hadoop" scheme="https://golveo.cn/tags/hadoop/"/>
     
   </entry>
   
   <entry>
     <title>Hadoop实战 – Apache访问日志</title>
-    <link href="http://yoursite.com/2016/09/22/hadoop-apache-accesslog/"/>
-    <id>http://yoursite.com/2016/09/22/hadoop-apache-accesslog/</id>
+    <link href="https://golveo.cn/2016/09/22/hadoop-apache-accesslog/"/>
+    <id>https://golveo.cn/2016/09/22/hadoop-apache-accesslog/</id>
     <published>2016-09-22T11:28:20.000Z</published>
     <updated>2016-09-29T14:45:48.244Z</updated>
     
@@ -333,25 +333,25 @@ access-info
     
     </summary>
     
-      <category term="bigdata" scheme="http://yoursite.com/categories/bigdata/"/>
+      <category term="bigdata" scheme="https://golveo.cn/categories/bigdata/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="hadoop" scheme="http://yoursite.com/tags/hadoop/"/>
+      <category term="hadoop" scheme="https://golveo.cn/tags/hadoop/"/>
     
-      <category term="idea" scheme="http://yoursite.com/tags/idea/"/>
+      <category term="idea" scheme="https://golveo.cn/tags/idea/"/>
     
-      <category term="maven" scheme="http://yoursite.com/tags/maven/"/>
+      <category term="maven" scheme="https://golveo.cn/tags/maven/"/>
     
-      <category term="java" scheme="http://yoursite.com/tags/java/"/>
+      <category term="java" scheme="https://golveo.cn/tags/java/"/>
     
   </entry>
   
   <entry>
     <title>使用脚本监控服务状态</title>
-    <link href="http://yoursite.com/2016/09/14/service-watcher-by-shell/"/>
-    <id>http://yoursite.com/2016/09/14/service-watcher-by-shell/</id>
+    <link href="https://golveo.cn/2016/09/14/service-watcher-by-shell/"/>
+    <id>https://golveo.cn/2016/09/14/service-watcher-by-shell/</id>
     <published>2016-09-14T10:59:54.000Z</published>
     <updated>2016-09-29T13:51:37.502Z</updated>
     
@@ -377,19 +377,19 @@ access-info
     
     </summary>
     
-      <category term="linux" scheme="http://yoursite.com/categories/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/categories/linux/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="shell" scheme="http://yoursite.com/tags/shell/"/>
+      <category term="shell" scheme="https://golveo.cn/tags/shell/"/>
     
   </entry>
   
   <entry>
     <title>Storm实时处理 – Nginx访问日志</title>
-    <link href="http://yoursite.com/2016/09/10/storm-nginx-accesslog/"/>
-    <id>http://yoursite.com/2016/09/10/storm-nginx-accesslog/</id>
+    <link href="https://golveo.cn/2016/09/10/storm-nginx-accesslog/"/>
+    <id>https://golveo.cn/2016/09/10/storm-nginx-accesslog/</id>
     <published>2016-09-10T09:30:09.000Z</published>
     <updated>2016-09-29T13:52:08.104Z</updated>
     
@@ -440,25 +440,25 @@ access-info
     
     </summary>
     
-      <category term="bigdata" scheme="http://yoursite.com/categories/bigdata/"/>
+      <category term="bigdata" scheme="https://golveo.cn/categories/bigdata/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="idea" scheme="http://yoursite.com/tags/idea/"/>
+      <category term="idea" scheme="https://golveo.cn/tags/idea/"/>
     
-      <category term="maven" scheme="http://yoursite.com/tags/maven/"/>
+      <category term="maven" scheme="https://golveo.cn/tags/maven/"/>
     
-      <category term="java" scheme="http://yoursite.com/tags/java/"/>
+      <category term="java" scheme="https://golveo.cn/tags/java/"/>
     
-      <category term="storm" scheme="http://yoursite.com/tags/storm/"/>
+      <category term="storm" scheme="https://golveo.cn/tags/storm/"/>
     
   </entry>
   
   <entry>
     <title>分布式集群 – Storm搭建</title>
-    <link href="http://yoursite.com/2016/09/09/storm-distribute-install/"/>
-    <id>http://yoursite.com/2016/09/09/storm-distribute-install/</id>
+    <link href="https://golveo.cn/2016/09/09/storm-distribute-install/"/>
+    <id>https://golveo.cn/2016/09/09/storm-distribute-install/</id>
     <published>2016-09-09T08:10:49.000Z</published>
     <updated>2016-09-29T14:10:10.347Z</updated>
     
@@ -488,21 +488,21 @@ access-info
     
     </summary>
     
-      <category term="bigdata" scheme="http://yoursite.com/categories/bigdata/"/>
+      <category term="bigdata" scheme="https://golveo.cn/categories/bigdata/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="distribute" scheme="http://yoursite.com/tags/distribute/"/>
+      <category term="distribute" scheme="https://golveo.cn/tags/distribute/"/>
     
-      <category term="storm" scheme="http://yoursite.com/tags/storm/"/>
+      <category term="storm" scheme="https://golveo.cn/tags/storm/"/>
     
   </entry>
   
   <entry>
     <title>分布式集群 – HBase搭建</title>
-    <link href="http://yoursite.com/2016/09/09/hbase-distribute-install/"/>
-    <id>http://yoursite.com/2016/09/09/hbase-distribute-install/</id>
+    <link href="https://golveo.cn/2016/09/09/hbase-distribute-install/"/>
+    <id>https://golveo.cn/2016/09/09/hbase-distribute-install/</id>
     <published>2016-09-09T08:10:20.000Z</published>
     <updated>2016-09-29T12:34:36.468Z</updated>
     
@@ -533,21 +533,21 @@ access-info
     
     </summary>
     
-      <category term="bigdata" scheme="http://yoursite.com/categories/bigdata/"/>
+      <category term="bigdata" scheme="https://golveo.cn/categories/bigdata/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="distribute" scheme="http://yoursite.com/tags/distribute/"/>
+      <category term="distribute" scheme="https://golveo.cn/tags/distribute/"/>
     
-      <category term="hbase" scheme="http://yoursite.com/tags/hbase/"/>
+      <category term="hbase" scheme="https://golveo.cn/tags/hbase/"/>
     
   </entry>
   
   <entry>
     <title>分布式集群 – Hive搭建</title>
-    <link href="http://yoursite.com/2016/09/08/hive-distribute-install/"/>
-    <id>http://yoursite.com/2016/09/08/hive-distribute-install/</id>
+    <link href="https://golveo.cn/2016/09/08/hive-distribute-install/"/>
+    <id>https://golveo.cn/2016/09/08/hive-distribute-install/</id>
     <published>2016-09-08T08:10:39.000Z</published>
     <updated>2016-09-29T13:53:42.109Z</updated>
     
@@ -592,21 +592,21 @@ access-info
     
     </summary>
     
-      <category term="bigdata" scheme="http://yoursite.com/categories/bigdata/"/>
+      <category term="bigdata" scheme="https://golveo.cn/categories/bigdata/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="distribute" scheme="http://yoursite.com/tags/distribute/"/>
+      <category term="distribute" scheme="https://golveo.cn/tags/distribute/"/>
     
-      <category term="hive" scheme="http://yoursite.com/tags/hive/"/>
+      <category term="hive" scheme="https://golveo.cn/tags/hive/"/>
     
   </entry>
   
   <entry>
     <title>分布式集群 – Kafka搭建</title>
-    <link href="http://yoursite.com/2016/09/07/kafka-distribute-install/"/>
-    <id>http://yoursite.com/2016/09/07/kafka-distribute-install/</id>
+    <link href="https://golveo.cn/2016/09/07/kafka-distribute-install/"/>
+    <id>https://golveo.cn/2016/09/07/kafka-distribute-install/</id>
     <published>2016-09-07T08:10:31.000Z</published>
     <updated>2016-09-29T12:33:50.106Z</updated>
     
@@ -646,21 +646,21 @@ access-info
     
     </summary>
     
-      <category term="bigdata" scheme="http://yoursite.com/categories/bigdata/"/>
+      <category term="bigdata" scheme="https://golveo.cn/categories/bigdata/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="distribute" scheme="http://yoursite.com/tags/distribute/"/>
+      <category term="distribute" scheme="https://golveo.cn/tags/distribute/"/>
     
-      <category term="kafka" scheme="http://yoursite.com/tags/kafka/"/>
+      <category term="kafka" scheme="https://golveo.cn/tags/kafka/"/>
     
   </entry>
   
   <entry>
     <title>分布式集群 – Zookeeper搭建</title>
-    <link href="http://yoursite.com/2016/09/06/zookeeper-distribute-install/"/>
-    <id>http://yoursite.com/2016/09/06/zookeeper-distribute-install/</id>
+    <link href="https://golveo.cn/2016/09/06/zookeeper-distribute-install/"/>
+    <id>https://golveo.cn/2016/09/06/zookeeper-distribute-install/</id>
     <published>2016-09-06T06:30:12.000Z</published>
     <updated>2016-09-29T12:32:50.930Z</updated>
     
@@ -686,21 +686,21 @@ access-info
     
     </summary>
     
-      <category term="bigdata" scheme="http://yoursite.com/categories/bigdata/"/>
+      <category term="bigdata" scheme="https://golveo.cn/categories/bigdata/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="distribute" scheme="http://yoursite.com/tags/distribute/"/>
+      <category term="distribute" scheme="https://golveo.cn/tags/distribute/"/>
     
-      <category term="zookeeper" scheme="http://yoursite.com/tags/zookeeper/"/>
+      <category term="zookeeper" scheme="https://golveo.cn/tags/zookeeper/"/>
     
   </entry>
   
   <entry>
     <title>分布式集群 – Hadoop搭建</title>
-    <link href="http://yoursite.com/2016/09/05/hadoop-distribute-install/"/>
-    <id>http://yoursite.com/2016/09/05/hadoop-distribute-install/</id>
+    <link href="https://golveo.cn/2016/09/05/hadoop-distribute-install/"/>
+    <id>https://golveo.cn/2016/09/05/hadoop-distribute-install/</id>
     <published>2016-09-05T04:10:09.000Z</published>
     <updated>2016-09-29T14:39:43.887Z</updated>
     
@@ -762,21 +762,21 @@ access-info
     
     </summary>
     
-      <category term="bigdata" scheme="http://yoursite.com/categories/bigdata/"/>
+      <category term="bigdata" scheme="https://golveo.cn/categories/bigdata/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="hadoop" scheme="http://yoursite.com/tags/hadoop/"/>
+      <category term="hadoop" scheme="https://golveo.cn/tags/hadoop/"/>
     
-      <category term="distribute" scheme="http://yoursite.com/tags/distribute/"/>
+      <category term="distribute" scheme="https://golveo.cn/tags/distribute/"/>
     
   </entry>
   
   <entry>
     <title>Mysql5.7的安装部署</title>
-    <link href="http://yoursite.com/2016/09/05/mysql-install-57/"/>
-    <id>http://yoursite.com/2016/09/05/mysql-install-57/</id>
+    <link href="https://golveo.cn/2016/09/05/mysql-install-57/"/>
+    <id>https://golveo.cn/2016/09/05/mysql-install-57/</id>
     <published>2016-09-05T02:57:10.000Z</published>
     <updated>2016-09-29T13:50:13.208Z</updated>
     
@@ -822,19 +822,19 @@ access-info
     
     </summary>
     
-      <category term="linux" scheme="http://yoursite.com/categories/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/categories/linux/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="mysql" scheme="http://yoursite.com/tags/mysql/"/>
+      <category term="mysql" scheme="https://golveo.cn/tags/mysql/"/>
     
   </entry>
   
   <entry>
     <title>分布式节点部署准备工作</title>
-    <link href="http://yoursite.com/2016/09/04/distribute-node-build-prepare/"/>
-    <id>http://yoursite.com/2016/09/04/distribute-node-build-prepare/</id>
+    <link href="https://golveo.cn/2016/09/04/distribute-node-build-prepare/"/>
+    <id>https://golveo.cn/2016/09/04/distribute-node-build-prepare/</id>
     <published>2016-09-04T05:24:52.000Z</published>
     <updated>2016-09-29T13:56:06.367Z</updated>
     
@@ -893,19 +893,19 @@ access-info
     
     </summary>
     
-      <category term="linux" scheme="http://yoursite.com/categories/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/categories/linux/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="distribution" scheme="https://golveo.cn/tags/distribution/"/>
     
-      <category term="distribution" scheme="http://yoursite.com/tags/distribution/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
   </entry>
   
   <entry>
     <title>Xsell SSH免密登陆</title>
-    <link href="http://yoursite.com/2016/09/04/xhell-ssh-login/"/>
-    <id>http://yoursite.com/2016/09/04/xhell-ssh-login/</id>
+    <link href="https://golveo.cn/2016/09/04/xhell-ssh-login/"/>
+    <id>https://golveo.cn/2016/09/04/xhell-ssh-login/</id>
     <published>2016-09-04T03:49:35.000Z</published>
     <updated>2016-09-29T07:58:07.814Z</updated>
     
@@ -920,19 +920,19 @@ access-info
     
     </summary>
     
-      <category term="linux" scheme="http://yoursite.com/categories/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/categories/linux/"/>
     
     
-      <category term="ssh" scheme="http://yoursite.com/tags/ssh/"/>
+      <category term="ssh" scheme="https://golveo.cn/tags/ssh/"/>
     
-      <category term="xshell" scheme="http://yoursite.com/tags/xshell/"/>
+      <category term="xshell" scheme="https://golveo.cn/tags/xshell/"/>
     
   </entry>
   
   <entry>
     <title>分布式节点SSH互信</title>
-    <link href="http://yoursite.com/2016/09/04/distribute-node-ssh/"/>
-    <id>http://yoursite.com/2016/09/04/distribute-node-ssh/</id>
+    <link href="https://golveo.cn/2016/09/04/distribute-node-ssh/"/>
+    <id>https://golveo.cn/2016/09/04/distribute-node-ssh/</id>
     <published>2016-09-04T02:29:28.000Z</published>
     <updated>2016-09-29T13:56:35.439Z</updated>
     
@@ -963,21 +963,21 @@ access-info
     
     </summary>
     
-      <category term="linux" scheme="http://yoursite.com/categories/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/categories/linux/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="ssh" scheme="http://yoursite.com/tags/ssh/"/>
+      <category term="ssh" scheme="https://golveo.cn/tags/ssh/"/>
     
-      <category term="distibute" scheme="http://yoursite.com/tags/distibute/"/>
+      <category term="distibute" scheme="https://golveo.cn/tags/distibute/"/>
     
   </entry>
   
   <entry>
     <title>VMware克隆虚拟机后的网卡恢复操作</title>
-    <link href="http://yoursite.com/2016/09/03/vm-clone-network-recover/"/>
-    <id>http://yoursite.com/2016/09/03/vm-clone-network-recover/</id>
+    <link href="https://golveo.cn/2016/09/03/vm-clone-network-recover/"/>
+    <id>https://golveo.cn/2016/09/03/vm-clone-network-recover/</id>
     <published>2016-09-03T03:58:47.000Z</published>
     <updated>2016-09-29T07:33:15.127Z</updated>
     
@@ -998,19 +998,19 @@ access-info
     
     </summary>
     
-      <category term="linux" scheme="http://yoursite.com/categories/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/categories/linux/"/>
     
     
-      <category term="linux" scheme="http://yoursite.com/tags/linux/"/>
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="vmware" scheme="http://yoursite.com/tags/vmware/"/>
+      <category term="vmware" scheme="https://golveo.cn/tags/vmware/"/>
     
   </entry>
   
   <entry>
     <title>C#使用RawInput实现自由组合快捷键</title>
-    <link href="http://yoursite.com/2015/05/29/cs-rowinput-look/"/>
-    <id>http://yoursite.com/2015/05/29/cs-rowinput-look/</id>
+    <link href="https://golveo.cn/2015/05/29/cs-rowinput-look/"/>
+    <id>https://golveo.cn/2015/05/29/cs-rowinput-look/</id>
     <published>2015-05-29T11:07:48.000Z</published>
     <updated>2016-09-16T12:11:32.000Z</updated>
     
@@ -1090,14 +1090,14 @@ access-info
     
     </summary>
     
-      <category term="csharp" scheme="http://yoursite.com/categories/csharp/"/>
+      <category term="csharp" scheme="https://golveo.cn/categories/csharp/"/>
     
     
-      <category term="c#" scheme="http://yoursite.com/tags/c/"/>
+      <category term="c#" scheme="https://golveo.cn/tags/c/"/>
     
-      <category term="wpf" scheme="http://yoursite.com/tags/wpf/"/>
+      <category term="wpf" scheme="https://golveo.cn/tags/wpf/"/>
     
-      <category term="rowinput" scheme="http://yoursite.com/tags/rowinput/"/>
+      <category term="rowinput" scheme="https://golveo.cn/tags/rowinput/"/>
     
   </entry>
   
