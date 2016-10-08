@@ -816,9 +816,9 @@ access-info
     
       <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="distribute" scheme="https://golveo.cn/tags/distribute/"/>
-    
       <category term="hadoop" scheme="https://golveo.cn/tags/hadoop/"/>
+    
+      <category term="distribute" scheme="https://golveo.cn/tags/distribute/"/>
     
   </entry>
   
