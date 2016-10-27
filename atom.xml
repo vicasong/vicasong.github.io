@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://golveo.cn/"/>
-  <updated>2016-10-06T09:38:17.171Z</updated>
+  <updated>2016-10-27T13:40:22.964Z</updated>
   <id>https://golveo.cn/</id>
   
   <author>
@@ -14,6 +14,56 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>分布式集群 – Flume搭建 一个Flume+Kafka的例子</title>
+    <link href="https://golveo.cn/2016/10/20/flume-distribute-install%20/"/>
+    <id>https://golveo.cn/2016/10/20/flume-distribute-install /</id>
+    <published>2016-10-20T05:12:31.000Z</published>
+    <updated>2016-10-27T13:40:22.964Z</updated>
+    
+    <content type="html"><![CDATA[<p>Flume分布式集群搭建的示例，该示例搭建环境以之前几篇文章的操作环境为基础，而且测试例子使用KafkaSink，因此，若未搭建Kafka集群请先查阅：《<a href="/2016/09/07/kafka-distribute-install">分布式集群搭建 – Kafka搭建</a>》<br><a id="more"></a></p>
+<h1 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h1><p>下载可从<a href="http://flume.apache.org/download.html" target="_blank" rel="external">官方网站</a>选择合适的版本下载，本文以1.7.0为例</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">wget http://mirrors.tuna.tsinghua.edu.cn/apache/flume/1.7.0/apache-flume-1.7.0-bin.tar.gz</div></pre></td></tr></table></figure>
+<p>解压此处不再重复说明。</p>
+<h1 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h1><p>进入flume安装的根目录下的<em>config</em>目录，重命名<em>flume-env.sh.template</em>为<em>flume-env.sh</em>并修改其内容，主要修改<code>JAVA_HOME</code>为当前系统安装JDK的路径即可。</p>
+<p>将Flume的bin目录写入环境变量，运行<code>flume-ng version</code>命令如下：</p>
+<figure class="highlight livecodeserver"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">Flume <span class="number">1.7</span><span class="number">.0</span></div><div class="line">Source code repository: <span class="keyword">https</span>://git-wip-us.apache.org/repos/asf/flume.git</div><div class="line">Revision: <span class="number">511</span>d868555dd4d16e6ce4fedc72c2d1454546707</div><div class="line">Compiled <span class="keyword">by</span> bessbd <span class="keyword">on</span> <span class="title">Wed</span> <span class="title">Oct</span> <span class="title">12</span> <span class="title">20</span>:<span class="title">51</span>:<span class="title">10</span> <span class="title">CEST</span> <span class="title">2016</span></div><div class="line">From source <span class="keyword">with</span> checksum <span class="number">0</span>d21b3ffdc55a07e1d08875872c00523</div></pre></td></tr></table></figure>
+<h1 id="一个KafkaSink的测试例子"><a href="#一个KafkaSink的测试例子" class="headerlink" title="一个KafkaSink的测试例子"></a>一个KafkaSink的测试例子</h1><p>首先，我们以Flume数据采集集群汇总数据到处理中心，再按需发送至Kafka集群供下一步处理为原型，设计通过hdfs1、hdfs2两个agent进行日志采集，通过AvroSink汇总至hdfs3，然后再使用KafkaSink发送至Kafka消息队列</p>
+<h2 id="编写配置文件"><a href="#编写配置文件" class="headerlink" title="编写配置文件"></a>编写配置文件</h2><h3 id="hdfs1的agent配置文件"><a href="#hdfs1的agent配置文件" class="headerlink" title="hdfs1的agent配置文件"></a>hdfs1的agent配置文件</h3><figure class="highlight bash"><figcaption><span>kafka-sink.conf</span></figcaption><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line">agent1.sources = s1</div><div class="line">agent1.channels = c1</div><div class="line">agent1.sinks = k1</div><div class="line"></div><div class="line">agent1.sources.s1.type = <span class="built_in">exec</span></div><div class="line">agent1.sources.s1.command = tail -F /home/bigdata/accesslog/access.log</div><div class="line">agent1.sources.s1.channels = c1</div><div class="line"></div><div class="line">agent1.channels.c1.type = memory</div><div class="line">agent1.channels.c1.capacity = 1000</div><div class="line">agent1.channels.c1.transactionCapacity = 100</div><div class="line"></div><div class="line">agent1.sinks.k1.type = avro</div><div class="line">agent1.sinks.k1.channel = c1</div><div class="line">agent1.sinks.k1.hostname = hdfs3</div><div class="line">agent1.sinks.k1.port = 4545</div></pre></td></tr></table></figure>
+<p>以上配置信息表明该agent的名称为agent1，source为<code>exec tail -f &lt;文件&gt;</code>，可针对生产环境使用不同的source，参见<a href="http://flume.apache.org/FlumeUserGuide.html" target="_blank" rel="external">官方用户文档</a>，使用内存缓冲通道，avro的sink，目标为hdfs3的4545端口</p>
+<h3 id="hdfs2的agent配置文件"><a href="#hdfs2的agent配置文件" class="headerlink" title="hdfs2的agent配置文件"></a>hdfs2的agent配置文件</h3><p>该文件同hdfs1的agent配置文件，只是agent的名称不同而已，为agent2</p>
+<h3 id="hdfs3的agent配置文件"><a href="#hdfs3的agent配置文件" class="headerlink" title="hdfs3的agent配置文件"></a>hdfs3的agent配置文件</h3><figure class="highlight bash"><figcaption><span>kafka-sink.conf</span></figcaption><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line">agent3.sources = s3</div><div class="line">agent3.channels = c3</div><div class="line">agent3.sinks = k3</div><div class="line"></div><div class="line">agent3.sources.s3.type = avro</div><div class="line">agent3.sources.s3.channels = c3</div><div class="line">agent3.sources.s3.bind = 0.0.0.0</div><div class="line">agent3.sources.s3.port = 4545</div><div class="line"></div><div class="line">agent3.channels.c3.type = memory</div><div class="line">agent3.channels.c3.capacity = 1000</div><div class="line">agent3.channels.c3.transactionCapacity = 100</div><div class="line">agent3.sinks.k3.channel = c3</div><div class="line">agent3.sinks.k3.type = org.apache.flume.sink.kafka.KafkaSink</div><div class="line">agent3.sinks.k3.kafka.topic = mytopic</div><div class="line">agent3.sinks.k3.kafka.bootstrap.servers = hdfs1:9092,hdfs2:9092,hdfs3:9092</div><div class="line">agent3.sinks.k3.kafka.flumeBatchSize = 30</div><div class="line">agent3.sinks.k3.kafka.producer.acks = 1</div><div class="line">agent3.sinks.k3.kafka.producer.linger.ms = 1</div><div class="line">agent3.sinks.k3.kafka.producer.compression.type = snappy</div></pre></td></tr></table></figure>
+<p>以上配置文件指明hdfs3的agent名称为agent3，source为avro，绑定端口4545，同样使用内存做为缓冲通道，使用KafkaSink，指定了服务集群、BatchSize、Topic、压缩方式等</p>
+<h2 id="启动Kafka集群"><a href="#启动Kafka集群" class="headerlink" title="启动Kafka集群"></a>启动Kafka集群</h2><p>在Kafka安装目录下运行命令<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">./bin/kafka-server-start.sh config/server.properties &amp;</div></pre></td></tr></table></figure></p>
+<p>创建指定的Topic<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">./bin/kafka-topics.sh -zookeeper hdfs1:2181,hdfs2:2181,hdfs3:2181 -topic mytopic -replication-factor 1 -partitions 1 -create</div></pre></td></tr></table></figure></p>
+<p>关于Kafka的搭建操作，可查看《<a href="/2016/09/07/kafka-distribute-install">分布式集群 - Kafka搭建</a>》一文</p>
+<h2 id="创建消费者（用于查看Kafka消息是否存在）"><a href="#创建消费者（用于查看Kafka消息是否存在）" class="headerlink" title="创建消费者（用于查看Kafka消息是否存在）"></a>创建消费者（用于查看Kafka消息是否存在）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">./bin/kafka-console-consumer.sh -zookeeper hdfs1:2181,hdfs2:2181,hdfs3:2181 - from-begining -topic mytopic</div></pre></td></tr></table></figure>
+<h2 id="启动Flume"><a href="#启动Flume" class="headerlink" title="启动Flume"></a>启动Flume</h2><p>在hdfs1节点运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">flume-ng agent -n agent1 -c conf <span class="_">-f</span> ~/services/apache-flume-1.7.0-bin/conf/kafka-sink.conf</div></pre></td></tr></table></figure></p>
+<p>在hdfs2节点运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">flume-ng agent -n agent2 -c conf <span class="_">-f</span> ~/services/apache-flume-1.7.0-bin/conf/kafka-sink.conf</div></pre></td></tr></table></figure></p>
+<p>在hdfs3节点运行<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">flume-ng agent -n agent3 -c conf <span class="_">-f</span> ~/services/apache-flume-1.7.0-bin/conf/kafka-sink.conf</div></pre></td></tr></table></figure></p>
+<p>然后启动模拟的access日志生成脚本，该脚本会不断在access.log文件末尾附加模拟的访问日志记录（关于该脚本，可参见《<a href="/2016/09/10/storm-nginx-accesslog">Storm实时处理 – Nginx访问日志</a>》</p>
+<p>此时可看到消费者控制台输出了大量访问日志信息，测试成功</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;Flume分布式集群搭建的示例，该示例搭建环境以之前几篇文章的操作环境为基础，而且测试例子使用KafkaSink，因此，若未搭建Kafka集群请先查阅：《&lt;a href=&quot;/2016/09/07/kafka-distribute-install&quot;&gt;分布式集群搭建 – Kafka搭建&lt;/a&gt;》&lt;br&gt;
+    
+    </summary>
+    
+      <category term="bigdata" scheme="https://golveo.cn/categories/bigdata/"/>
+    
+    
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
+    
+      <category term="distribute" scheme="https://golveo.cn/tags/distribute/"/>
+    
+      <category term="flume" scheme="https://golveo.cn/tags/flume/"/>
+    
+      <category term="kafka" scheme="https://golveo.cn/tags/kafka/"/>
+    
+  </entry>
   
   <entry>
     <title>分布式集群 – Spark搭建</title>
@@ -657,7 +707,7 @@ access-info
     <link href="https://golveo.cn/2016/09/07/kafka-distribute-install/"/>
     <id>https://golveo.cn/2016/09/07/kafka-distribute-install/</id>
     <published>2016-09-07T08:10:31.000Z</published>
-    <updated>2016-09-29T12:33:50.106Z</updated>
+    <updated>2016-10-27T13:37:56.563Z</updated>
     
     <content type="html"><![CDATA[<p>Kafka分布式集群搭建的示例，该示例搭建环境以Zookeeper集群搭建为基础，且依赖于Zookeeper集群，因此，若未搭建Zookeeper集群请先查阅：《<a href="/2016/09/06/zookeeper-distribute-install">分布式集群搭建 – Zookeeper搭建</a>》<br><a id="more"></a></p>
 <h1 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h1><p>下载解压同理，此处不再重复说明。</p>
@@ -679,6 +729,10 @@ access-info
 </ul>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">./bin/kafka-topics.sh -zookeeper hdfs1:2181,hdfs2:2181,hdfs3:2181 -list</div></pre></td></tr></table></figure>
 <ul>
+<li>删除topic*</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">./bin/kafka-topics.sh -zookeeper hdfs1:2181,hdfs2:2181,hdfs3:2181 -topic mytopic -delete</div></pre></td></tr></table></figure>
+<ul>
 <li>创建生产者</li>
 </ul>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">./bin/kafka-console-producer.sh -broker-list hdfs1:9092,hdfs2:9092,hdfs3:9092 -topic mytopic</div></pre></td></tr></table></figure>
@@ -686,7 +740,7 @@ access-info
 <li>创建消费者</li>
 </ul>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">./bin/kafka-console-consumer.sh -zookeeper hdfs1:2181,hdfs2:2181,hdfs3:2181 - from-begining  -topic mytopic</div></pre></td></tr></table></figure>
-<p>如果严格按照以上配置，测试是一次通过的，中间不会产生任何警告或错误。</p>
+<p>如果严格按照以上配置，测试是一次通过的，中间不会产生任何警告或错误。<br>* 删除Topic并不会立即生效，而是将其标记为待删除，或者可以直接在Zookeeper的文件目录中删除该Topic目录</p>
 ]]></content>
     
     <summary type="html">
@@ -816,9 +870,9 @@ access-info
     
       <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
-      <category term="hadoop" scheme="https://golveo.cn/tags/hadoop/"/>
-    
       <category term="distribute" scheme="https://golveo.cn/tags/distribute/"/>
+    
+      <category term="hadoop" scheme="https://golveo.cn/tags/hadoop/"/>
     
   </entry>
   
@@ -945,9 +999,9 @@ access-info
       <category term="linux" scheme="https://golveo.cn/categories/linux/"/>
     
     
-      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
-    
       <category term="distribution" scheme="https://golveo.cn/tags/distribution/"/>
+    
+      <category term="linux" scheme="https://golveo.cn/tags/linux/"/>
     
   </entry>
   
