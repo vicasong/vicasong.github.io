@@ -1,0 +1,863 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Vica">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="最近有同事在线上遇到多线程共享变量可见性问题，简单处理后，我觉得这些基础应该需要再整理总结一下。（该部分内容需要熟悉JVM并发相关概念和了解JVM解释运行过程，有一定阅读门槛）">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java共享变量可见性的一些简述">
+<meta property="og:url" content="https://vicasong.github.io/java/juc-visible-sample-doc/">
+<meta property="og:site_name" content="VicaSong">
+<meta property="og:description" content="最近有同事在线上遇到多线程共享变量可见性问题，简单处理后，我觉得这些基础应该需要再整理总结一下。（该部分内容需要熟悉JVM并发相关概念和了解JVM解释运行过程，有一定阅读门槛）">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://vicasong.github.io/images/cpu-cache-grp.jpg">
+<meta property="og:image" content="https://vicasong.github.io/images/cpu-cache-mic.jpg">
+<meta property="og:image" content="https://vicasong.github.io/images/cache-line.jpg">
+<meta property="og:image" content="https://vicasong.github.io/images/cache-coherence.jpg">
+<meta property="article:published_time" content="2023-03-27T08:09:55.000Z">
+<meta property="article:modified_time" content="2024-01-08T07:07:24.435Z">
+<meta property="article:author" content="Vica">
+<meta property="article:tag" content="java">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://vicasong.github.io/images/cpu-cache-grp.jpg">
+  
+  
+  
+  <title>Java共享变量可见性的一些简述 - VicaSong</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"vicasong.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>VicaSong</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Java共享变量可见性的一些简述"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-03-27 16:09" pubdate>
+          2023年3月27日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          5.7k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          48 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Java共享变量可见性的一些简述</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>最近有同事在线上遇到多线程共享变量可见性问题，简单处理后，我觉得这些基础应该需要再整理总结一下。（该部分内容需要熟悉JVM并发相关概念和了解JVM解释运行过程，有一定阅读门槛）</p>
+<span id="more"></span>
+
+<p>由于Java内存模型（JMM）定义了Java程序中变量会存储在主内存中，而每个线程都有自己独立的工作内存，其中保存了当前线程使用到的变量副本。<br>即，不同线程之间是无法访问其他线程的工作内存中的变量的，共享变量在线程之间的传递需要通过主内存完成。同时，因为CUP有很多级缓存（L1 Cache、L2 Cache等），而线程可能运行在不同的CPU核心上，<br>在一个特定时间它们读取到的“内存”内容可能会不一样。</p>
+<p>由此就会引出一个问题，多线程对共享变量修改导致不一致。例如：</p>
+<p>设<code>x=1</code>，线程0、线程1分别计算<code>x=x+1</code>，期望会得到<code>x=3</code>，但实际运行如下：</p>
+<table>
+<thead>
+<tr>
+<th>CPU时间片序号</th>
+<th>线程</th>
+<th>操作</th>
+<th>线程内存</th>
+<th>主内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>thread-0</td>
+<td>读取</td>
+<td>x&#x3D;1</td>
+<td>x&#x3D;1</td>
+</tr>
+<tr>
+<td>2</td>
+<td>thread-0</td>
+<td>计算</td>
+<td>x&#x3D;2</td>
+<td>x&#x3D;1</td>
+</tr>
+<tr>
+<td>3</td>
+<td>thread-1</td>
+<td>读取</td>
+<td>x&#x3D;1</td>
+<td>x&#x3D;1</td>
+</tr>
+<tr>
+<td>4</td>
+<td>thread-0</td>
+<td>写回</td>
+<td>x&#x3D;2</td>
+<td>x&#x3D;2</td>
+</tr>
+<tr>
+<td>…</td>
+<td>…</td>
+<td>..</td>
+<td>…</td>
+<td>…</td>
+</tr>
+</tbody></table>
+<p>那么有聪明的小伙伴就说了，我等线程0操作完再继续线程1的计算不就好了嘛：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">private</span> <span class="hljs-type">boolean</span> <span class="hljs-variable">ready</span> <span class="hljs-operator">=</span> <span class="hljs-literal">false</span>;<br><span class="hljs-keyword">private</span> <span class="hljs-type">int</span> <span class="hljs-variable">x</span> <span class="hljs-operator">=</span> <span class="hljs-number">1</span>;   <br><span class="hljs-comment">// 线程0计算</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">first</span><span class="hljs-params">()</span>&#123;<br>    x = x + <span class="hljs-number">1</span>;<br>    ready = <span class="hljs-literal">true</span>;             <br>&#125;<br><span class="hljs-comment">// 线程1计算</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">second</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-keyword">while</span> (!ready) &#123;<br>    &#125;<br>    x = x + <span class="hljs-number">1</span>;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>但是，此时有一个优化策略就出来搞事了：“指令重排”，即编译器或CPU为了提高程序效率会将部分指令的执行顺序进行调整，也就是指令不一定会按照书写顺序执行：</p>
+<table>
+<thead>
+<tr>
+<th>CPU时间片序号</th>
+<th>线程</th>
+<th>操作</th>
+<th>线程内存</th>
+<th>主内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>thread-0</td>
+<td>读取</td>
+<td>x&#x3D;1</td>
+<td>x&#x3D;1</td>
+</tr>
+<tr>
+<td>2</td>
+<td>thread-0</td>
+<td>赋值</td>
+<td>x&#x3D;1, ready&#x3D;true</td>
+<td>x&#x3D;1, ready&#x3D;false</td>
+</tr>
+<tr>
+<td>3</td>
+<td>thread-0</td>
+<td>写回</td>
+<td>x&#x3D;1, ready&#x3D;true</td>
+<td>x&#x3D;1, ready&#x3D;true</td>
+</tr>
+<tr>
+<td>4</td>
+<td>thread-1</td>
+<td>读取</td>
+<td>ready&#x3D;true, x&#x3D;1</td>
+<td>x&#x3D;1, ready&#x3D;true</td>
+</tr>
+<tr>
+<td>5</td>
+<td>thread-0</td>
+<td>计算</td>
+<td>x&#x3D;2, ready&#x3D;true</td>
+<td>x&#x3D;1, ready&#x3D;true</td>
+</tr>
+<tr>
+<td>6</td>
+<td>thread-0</td>
+<td>写回</td>
+<td>x&#x3D;2, ready&#x3D;true</td>
+<td>x&#x3D;2, ready&#x3D;true</td>
+</tr>
+<tr>
+<td>…</td>
+<td>…</td>
+<td>..</td>
+<td>…</td>
+<td>…</td>
+</tr>
+</tbody></table>
+<p>上面的结果不总是会复现（如果你进行一个批量基准测试，就会发现结果各有不同），而且，部分编译器还会对代码进行优化：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-comment">// 优化1</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">second</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-type">boolean</span> <span class="hljs-variable">a1</span> <span class="hljs-operator">=</span> ready;<br>    <span class="hljs-keyword">while</span> (a1) &#123;&#125;<br>    x = x + <span class="hljs-number">1</span>;<br>&#125;<br><span class="hljs-comment">// 优化2</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">second</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-type">boolean</span> <span class="hljs-variable">a1</span> <span class="hljs-operator">=</span> ready;<br>    <span class="hljs-keyword">if</span> (!a1) <span class="hljs-keyword">return</span>;<br>    <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) &#123;&#125;<br>    x = x + <span class="hljs-number">1</span>;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+
+<p>那么我们如何才能保证共享变量的可见性呢？</p>
+<h1 id="可见性"><a href="#可见性" class="headerlink" title="可见性"></a>可见性</h1><p>在现代CPU及硬件架构中，缓存一致性协议会保证不同CPU操作的数据缓存始终是一致的。</p>
+<h2 id="缓存一致性"><a href="#缓存一致性" class="headerlink" title="缓存一致性"></a>缓存一致性</h2><h3 id="CPU缓存行"><a href="#CPU缓存行" class="headerlink" title="CPU缓存行"></a>CPU缓存行</h3><p>速度越快的存储，其硬件成本越高。为了权衡成本效益，存储会被分成多层架构：寄存器、一级缓存（L1 Cache）、二级缓存（L2 Cache）、三级缓存（L3 Cache）、内存和硬盘等，其速度、容量和成本依次下降。</p>
+<img src="/images/cpu-cache-grp.jpg" srcset="/img/loading.gif" lazyload class="" title="存储架构" alt="存储架构">
+
+<p>本文，我们主要讨论CPU缓存部分。现代架构的CPU在显微镜下其局部大概是这样的：</p>
+<img src="/images/cpu-cache-mic.jpg" srcset="/img/loading.gif" lazyload class="" title="CPU显微图局部" alt="CPU显微图局部">
+
+<p>可以看到那一块块排列整齐的“建筑区”就是缓存，其示意图大概是这样的：</p>
+<img src="/images/cache-line.jpg" srcset="/img/loading.gif" lazyload class="" title="缓存行" alt="缓存行">
+
+<p>缓存行（Cache Line）是存储交换管理的最小单元。</p>
+<h3 id="缓存一致性协议"><a href="#缓存一致性协议" class="headerlink" title="缓存一致性协议"></a>缓存一致性协议</h3><p>当多个cpu对同一块内存地址进行操作时，即共享数据时，如何保证它们操作的数据的一致性呢？</p>
+<p>缓存一致性，即当CPU0对缓存行中的数据做了修改，就要通知其他CPU，例如CPU1，它的缓存行失效了，那么CPU1想要操作该缓存行的数据时就会退行到从下一级存储重新加载数据。</p>
+<p>缓存一致性协议有很多种不同的实现，但此处主要简述一下典型的MESI协议场景。</p>
+<p>在MESI协议中，每个缓存行都会有一个固定状态：Modified、Exclusive、Shared、Invalid。<br>假设单前有2个CPU核心：A和B，当A从存储中加载一个变量时，会读取一段连续的数据，即缓存行，该缓存行将会被标记为“Exclusive”，此时只有A在操作该缓存行（唯一的数据缓存拷贝，且数据和主内存是一致的），数据会持续保留在缓存中（对缓存的修改不会立即刷新到下级存储，仅在有必要的时候）。<br>此时，B也要读取一个变量，刚好和A读取的数据在同一块缓存行中，那么此时B的缓存中也缓存了同样的缓存行，但A、B缓存行都会被标记为“Shared”（缓存数据和主内存依旧是保持一致的）。<br>然后我们假设A接下来对它读取的变量进行了修改，那么A的缓存行会被标记为“Modified”（此时，该缓存行的数据就和主内存不一致，且仅该缓存行的数据才是最新的），同时A会通知B说你的缓存行过时了，此时B的缓存行会被标记为“Invalid”（此缓存行已过期，缓存的内容不会再被使用）。<br>那么过了一段时间，B要再次读取它的变量了，但B此时的缓存行已经失效了，它应该去下一级存储重新读取数据，B对该数据块的读取访问会强制要求A将“Modified”标记的该缓存行刷新到下一级存储，等数据刷新后B读取到的就是最新的缓存行，此时A、B的缓存行再次被标记为“Shared”。</p>
+<h3 id="伪共享（False-Sharing）"><a href="#伪共享（False-Sharing）" class="headerlink" title="伪共享（False Sharing）"></a>伪共享（False Sharing）</h3><p>而如果它们修改的是缓存行中不同区域的数据时，就会争用同一个缓存行，导致看起来像是争用同一个共享变量一样。</p>
+<img src="/images/cache-coherence.jpg" srcset="/img/loading.gif" lazyload class="" title="缓存一致性" alt="缓存一致性">
+
+
+<p>缓存行会因此被不停标记为失效，并刷新和重新加载，这会带来性能问题。因此，对于同一块数据块上的不同变量的操作，可以通过填充数据使它们分布到不同的缓存行上来避免此性能问题。</p>
+<h2 id="变量易失性"><a href="#变量易失性" class="headerlink" title="变量易失性"></a>变量易失性</h2><p>那么我们再次使用之前提到的代码，只是稍微简化了一下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">private</span> <span class="hljs-type">boolean</span> <span class="hljs-variable">ready</span> <span class="hljs-operator">=</span> <span class="hljs-literal">false</span>; <br><span class="hljs-comment">// 线程0</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">first</span><span class="hljs-params">()</span>&#123;<br>    ready = <span class="hljs-literal">true</span>;             <br>&#125;<br><span class="hljs-comment">// 线程1</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">second</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-keyword">while</span> (!ready) &#123;<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>我们有2个线程会分别执行上面的对应方法，如代码所写：线程1将无限循环直到线程0将共享变量<code>ready</code>的值做出修改，从而终止线程1的循环。</p>
+<p>然而事情并没有这么简单，首先每个线程都会有共享变量的副本（JMM）保存在各自的堆栈中，JMM是一个抽象概念，这些数据可能在物理内存中，也可能在CPU缓存或者寄存器中。<br>而当线程0对共享变量进行修改后，线程1并不能看到该变量的修改，它仍将保持无限循环。 </p>
+<p>这里就有人开始困惑了，前面不是说了在硬件层面，CPU缓存会保持一致么，比如：MESI协议。那么线程共享的数据为什么还会不一致呢？<br>问题就在这里，如上所述“缓存一致性”，即是关于CPU缓存的，数据被层层加载到CPU中，每个CPU都有自己的寄存器，缓存会通过MESI等协议保持一致，但寄存器例外。<br>编译器很“聪明”，它认为在单线程下，变量<code>ready</code>不会被修改，此变量会存储在CPU寄存器中，因为寄存器的访问速度要比缓存快的多的多。但现在是多线程环境，编译器也会假设即使是多线程，也不会有数据通信，<br>每个线程都会复制一份数据的副本并存储在寄存器中，如果一个线程访问数据，这份数据刚好存在于寄存器中，那么在其他CPU的线程就无法看到数据的更新。 </p>
+<p>所以，有办法阻止编译器将共享变量存储到寄存器中吗？这就是<code>volatile</code>（具体是如何做的，请继续往下看）.</p>
+<blockquote><p>网络上有很多关于易失性的文章，都提到了<code>volatile</code>会强制让数据交换使用主内存，这是过时或错误的描述，且一直被广泛传播。  </p>
+<ol>
+<li>首先，在Java1.5时代，主流CPU架构中，缓存一致性是可选功能且默认不开启，<code>volatile</code>为此担任了一个重要角色就是使用指令开启缓存一致性。但如今该功能已成为架构中的必选项，缓存一致性是硬件层协议，软件开发者无需额外处理。</li>
+<li><code>volatile</code>不会也无法直接让数据从主内存中读写，因为效率太低了，CPU要等待数据从主内存读取或写入就好像你要从澳洲步行和游泳到俄国北部，和那里的朋友说一句话然后再徒步返回，慢到令人发指。因为如今CPU频率都是至少<code>GHz</code>为单位，而主内存频率只是<code>Mhz</code>，它们速度差距几乎是跨维度的。</li>
+<li>CPU存储架构对其上的应用是透明的，JMM足够抽象，其中的数据可以在任何位置（寄存器、缓存或主内存等等），<code>volatile</code>不能使CPU立即刷新缓存，系统会在必要的时候进行缓存刷新操作，由缓存一致性保证数据在缓存中是始终一致的。</li>
+</ol>
+</blockquote>
+
+
+<h1 id="顺序性"><a href="#顺序性" class="headerlink" title="顺序性"></a>顺序性</h1><p>CPU访问一次存储需要花费很长的时间，出于性能优化，程序的读写不一定会按照程序要求的顺序执行。例如：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs java">a=<span class="hljs-number">1</span>;<br>b=<span class="hljs-number">1</span>;<br>b++;<br>a++;<br>b=<span class="hljs-number">5</span>;<br></code></pre></td></tr></table></figure>
+<p>从代码看，如果<code>b=1</code>那么<code>a=1</code>，但实际上面的代码可能会被优化成<code>b=5;a=2</code>。这种优化在单线程看来完全没有问题，但如果变量被多线程共享，那么读写顺序的改变就会导致程序行为出现不一致，为此需要在适当操作的位置放置标记来避免此类优化和重排。</p>
+<p>依旧是<code>volatile</code>，该关键字标记的变量会在编译器或CPU进行指令优化时做出一些限制。涉及到几个屏障（barriers）：<code>LoadStore</code>、<code>LoadLoad</code>、<code>StoreLoad</code>、<code>StoreStore</code>。</p>
+<h2 id="缓存一致性-amp-内存一致性"><a href="#缓存一致性-amp-内存一致性" class="headerlink" title="缓存一致性&amp;内存一致性"></a>缓存一致性&amp;内存一致性</h2><p>缓存一致性协议确保对同一内存位置的读取将始终返回最新的值。仅当存这个同一内存位置的缓存有多个副本时，才需要缓存一致性协议，其工作内容就是保持所有副本的一致性，以下注意区分缓存和缓冲。</p>
+<p>内存一致性模型则关注于读取和写入到不同内存位置的相对顺序，TSO（Total Storage Order）。</p>
+<h2 id="顺序"><a href="#顺序" class="headerlink" title="顺序"></a>顺序</h2><p>由于X86架构CPU提供了TSO，所以<code>LoadStore</code>、<code>LoadLoad</code>、<code>StoreStore</code>这几个屏障相当于空操作，主要用于限制编译器优化，<code>StoreLoad</code>会有额外指令实现。</p>
+<table>
+<thead>
+<tr>
+<th>屏障类型</th>
+<th>示例指令</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>LoadLoad</td>
+<td>Load1;LoadLoad;Load2</td>
+<td>该屏障确保Load1数据的加载先于Load2及其后所有读取指令的操作</td>
+</tr>
+<tr>
+<td>StoreStore</td>
+<td>Store1;StoreStore;Store2</td>
+<td>该屏障确保Store1的写入操作先于Store2及其后所有写入指令的操作</td>
+</tr>
+<tr>
+<td>LoadStore</td>
+<td>Load1;LoadStore;Store2</td>
+<td>确保Load1的数据加载先于Store2及其后所有的写入指令的操作</td>
+</tr>
+<tr>
+<td>StoreLoad</td>
+<td>Store1;StoreLoad;Load2</td>
+<td>确保Store1的写入操作先于Load2及其后所有读取指令的操作。同时该屏障之前的所有数据访问指令完成之后，才执行该屏障之后的数据访问指令</td>
+</tr>
+</tbody></table>
+<p>先看几个例子（我们假设有<code>volatile</code>变量<code>A</code>、<code>B</code>）：</p>
+<p>1）：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs java">tmp=A <span class="hljs-comment">// volatile 读取</span><br>[LoadLoad]<br>[LoadStore]<br><span class="hljs-comment">// 读读、读写屏障，此时任何读取或写入操作都不能移动到屏障之前，但它们之间的顺序可重排</span><br></code></pre></td></tr></table></figure>
+<p>2）：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-comment">// 读写、写写屏障，此时任何读取或写入操作都不能移动到屏障之后，但它们之间的顺序可重排</span><br>[LoadStore]<br>[StoreStore]<br>B=tmp <span class="hljs-comment">// volatile 写入</span><br></code></pre></td></tr></table></figure>
+<p>3）：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs java">[LoadStore]<br>[StoreStore]<br>A=tmp1  <span class="hljs-comment">// volatile 写入</span><br>tmp2=B  <span class="hljs-comment">// volatile 读取</span><br>[LoadLoad]<br>[LoadStore]<br></code></pre></td></tr></table></figure>
+
+<p>如例3，<code>volatile</code>变量的读取或写入仍然可能会被重新排序，此时需要额外的屏障去阻止CPU或编译器对此的优化排序，此处会添加一个新屏障，就是<code>StoreLoad</code>，该屏障会被添加到写操作之后。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs java">[LoadStore]<br>[StoreStore]<br>A=tmp1  <span class="hljs-comment">// volatile 写入</span><br>[StoreLoad]<br>tmp2=B  <span class="hljs-comment">// volatile 读取</span><br>[LoadLoad]<br>[LoadStore]<br></code></pre></td></tr></table></figure>
+
+<p><code>StoreLoad</code>屏障同时具备<code>StoreStore</code>、<code>LoadLoad</code>、<code>LoadStore</code>三个屏障的效果，会被编译为<code>MFENCE</code>或<code>lock addl %(RSP),0</code>指令。锁定主线，停止读取操作直到所有缓冲区（注意，CPU寄存器也算缓冲区）已经刷新，确保了加载的数据全局可见，即数据从缓冲区到内存或CPU缓存。</p>
+<blockquote><p>X86是一种处理器架构，我们用的大多数CPU都是X86架构，Intel和AMD生产的绝大多数CPU，比如奔腾（Pentium），赛扬(Celeron)，酷睿(core)，Xeon等等都是该架构，而X86_64是X86的扩充，并且兼容X86</p>
+</blockquote>
+
+<p>综上，你应该在心中有了了解，明白了共享变量可见性和<code>volatile</code>之间的关系。</p>
+<h2 id="补充"><a href="#补充" class="headerlink" title="补充"></a>补充</h2><p>在有些平台的JVM实现中，<code>long</code>、<code>double</code>等64位数据的读写会被拆成两次32位读写操作，在多线程并发下可能会导致读取或写入不一致的问题，使用<code>volatile</code>可以保证该类型变量读写原子性。但实际上是有性能损耗的（<code>volatile</code>还保证了顺序性），即使在X86架构64位机器上，其已经保证了对64bit数据的读取和写入是原子性的，但我们无法保证程序不会在32位机器上运行，所以对<code>long</code>、<code>double</code>使用<code>volatile</code>是有意义的。</p>
+<p>基于上述屏障，在<code>volatile</code>被全局可见时，其之前写入的其他数据也会被刷新，从而全局可见。例如：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs java">a=<span class="hljs-number">2</span>;<br>b=++a;<br>X=<span class="hljs-number">1</span>; <span class="hljs-comment">// volatile 写入</span><br></code></pre></td></tr></table></figure>
+<p>那么其他线程在<code>X=1</code>可见时，其对变量<code>a</code>、<code>b</code>也可见。</p>
+<!--https://software.rajivprab.com/2018/04/29/myths-programmers-believe-about-cpu-caches/-->
+<!--https://shipilev.net/blog/2014/on-the-fence-with-dependencies/-->
+<!--https://aaron-ai.com/docs/cache_consistency_and_memory_barrier/-->
+
+
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/java/" class="category-chain-item">java</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/java/">#java</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Java共享变量可见性的一些简述</div>
+      <div>https://vicasong.github.io/java/juc-visible-sample-doc/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Vica</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年3月27日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/java/upgrade-to-java17/" title="从Java8升级到Java17">
+                        <span class="hidden-mobile">从Java8升级到Java17</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

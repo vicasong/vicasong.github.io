@@ -1,0 +1,706 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Vica">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="此示例工程在上一篇关于Storm集群搭建的博文中提到，运行环境即为Storm+Kafka分布式集群环境，主要应用流式处理，实时解析Nginx访问日志，一般用于PV、UV统计及访问监控。该示例也起到举一反三的作用。Storm常被用于实时分析、在线机器学习、持续计算、分布式远程调用和ETL等领域。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Storm实时处理 – Nginx访问日志">
+<meta property="og:url" content="https://vicasong.github.io/big-data/storm-nginx-accesslog/">
+<meta property="og:site_name" content="VicaSong">
+<meta property="og:description" content="此示例工程在上一篇关于Storm集群搭建的博文中提到，运行环境即为Storm+Kafka分布式集群环境，主要应用流式处理，实时解析Nginx访问日志，一般用于PV、UV统计及访问监控。该示例也起到举一反三的作用。Storm常被用于实时分析、在线机器学习、持续计算、分布式远程调用和ETL等领域。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://vicasong.github.io/images/src-storm-nginx-idea-project.png">
+<meta property="og:image" content="https://vicasong.github.io/images/src-stormui-storm-idea-nginx-project.png">
+<meta property="article:published_time" content="2016-09-10T08:28:42.000Z">
+<meta property="article:modified_time" content="2024-01-08T06:10:56.509Z">
+<meta property="article:author" content="Vica">
+<meta property="article:tag" content="linux">
+<meta property="article:tag" content="distribution">
+<meta property="article:tag" content="big-data">
+<meta property="article:tag" content="storm">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://vicasong.github.io/images/src-storm-nginx-idea-project.png">
+  
+  
+  
+  <title>Storm实时处理 – Nginx访问日志 - VicaSong</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"vicasong.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>VicaSong</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Storm实时处理 – Nginx访问日志"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2016-09-10 16:28" pubdate>
+          2016年9月10日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          9.8k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          82 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Storm实时处理 – Nginx访问日志</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>此示例工程在上一篇关于Storm集群搭建的博文中提到，运行环境即为Storm+Kafka分布式集群环境，主要应用流式处理，实时解析Nginx访问日志，一般用于PV、UV统计及访问监控。该示例也起到举一反三的作用。Storm常被用于实时分析、在线机器学习、持续计算、分布式远程调用和ETL等领域。</p>
+<span id="more"></span>
+
+<h1 id="场景描述"><a href="#场景描述" class="headerlink" title="场景描述"></a>场景描述</h1><p>需要实时解析Nginx集群站点的访问日志，以供实时的访问分析、入侵检测、动态调整等。通过Kafka消息队列将新的访问记录传递到Storm集群，从消息队列中消费这些访问记录并解析存储，以供下一步分析。</p>
+<h1 id="场景搭建-x2F-模拟"><a href="#场景搭建-x2F-模拟" class="headerlink" title="场景搭建&#x2F;模拟"></a>场景搭建&#x2F;模拟</h1><p>通过编写shell脚本，动态生成“访问日志”，以模拟此次实践环境。</p>
+<h2 id="思路"><a href="#思路" class="headerlink" title="思路"></a>思路</h2><p>取nginx访问日志的记录模板，通过随机数据替换关键部分信息，并将生成的模拟记录追加到文件中。</p>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><figure class="highlight shell"><figcaption><span>logger.sh</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs shell">int=1<br>while(( $int&lt;=1000000000 ))<br>do<br>        rand=$(date +%N)<br>        ips=$((10#$rand%253+1))<br>        dates=`date +&#x27;%d/%b/%y:%H:%M:%S %z&#x27;`<br>        log=&quot;&#123; \&quot;time_local\&quot;: \&quot;$dates\&quot;, \&quot;remote_addr\&quot;: \&quot;182.92.77.$ips\&quot;, \&quot;remote_user\&quot;: \&quot;-\&quot;, \&quot;body_bytes_sent\&quot;: \&quot;5760\&quot;, \&quot;request_time\&quot;: \&quot;0.005\&quot;, \&quot;status\&quot;: \&quot;200\&quot;, \&quot;request\&quot;: \&quot;GET /jiayouserver/www/index.php\&quot;, \&quot;request_method\&quot;: \&quot;GET\&quot;, \&quot;http_referrer\&quot;: \&quot;-\&quot;, \&quot;body_bytes_sent\&quot;:\&quot;5760\&quot;, \&quot;http_x_forwarded_for\&quot;: \&quot;-\&quot;, \&quot;http_user_agent\&quot;: \&quot;Wget/1.12 (linux-gnu)\&quot; &#125;&quot;<br>        let &quot;int++&quot;<br>        echo $log &gt;&gt; access.log<br>        # echo $log<br>        sleep 1s<br>done<br></code></pre></td></tr></table></figure>
+
+<p>如上代码，变量<code>rand</code>为当前时间的纳秒数，以此变量为基础生成随机访问IP的主机地址，<code>dates</code>变量则为格式化的当前时间字符串，每秒生成一条记录。由于使用系统时间产生的随机数分布很均匀，在后面的<code>PV</code>、<code>UV</code>统计中，数据会呈现基本持平的状态，可通过增加概率系数调整这一分布水平使得数据看起来更真实。</p>
+<p>以上代码保存为<code>logger.sh</code>文件，使用命令 <code>./logger.sh 2&gt;&amp;1 &amp;</code>运行后台任务模拟nginx服务器。</p>
+<h1 id="着手实现"><a href="#着手实现" class="headerlink" title="着手实现"></a>着手实现</h1><h2 id="通信队列"><a href="#通信队列" class="headerlink" title="通信队列"></a>通信队列</h2><p>在模拟的nginx服务器目录下生成的<em>access.log</em>文件会在每秒追加一条记录。</p>
+<h3 id="创建新话题"><a href="#创建新话题" class="headerlink" title="创建新话题"></a>创建新话题</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs shell">bin/kafka-topics.sh -zookeeper hdfs1:2181,hdfs2:2181,hdfs3:2181 -partitions 1 -replication-factor 1 -topic accesslog -create<br></code></pre></td></tr></table></figure>
+
+<h3 id="创建生产者"><a href="#创建生产者" class="headerlink" title="创建生产者"></a>创建生产者</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs shell">tail -f ~/accesslog/access.log | bin/kafka-console-producer.sh -broker-list hdfs1:9092,hdfs2:9092,hdfs3:9092 -topic accesslog &amp;<br></code></pre></td></tr></table></figure>
+
+<h2 id="storm解析"><a href="#storm解析" class="headerlink" title="storm解析"></a>storm解析</h2><p>使用IDEA新建一个Maven项目，在<code>pom.xml</code>中添加以下依赖：</p>
+<figure class="highlight xml"><figcaption><span>pom.xml</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>junit<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>junit<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>4.11<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br><span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br><span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.storm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>storm-core<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.0.2<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">scope</span>&gt;</span>provided<span class="hljs-tag">&lt;/<span class="hljs-name">scope</span>&gt;</span><br><span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br><span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.storm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>storm-kafka<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.0.2<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">exclusions</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">exclusion</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.kafka<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>kafka-clients<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;/<span class="hljs-name">exclusion</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">exclusion</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.slf4j<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>slf4j-api<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;/<span class="hljs-name">exclusion</span>&gt;</span><br>        <span class="hljs-tag">&lt;/<span class="hljs-name">exclusions</span>&gt;</span><br><span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br><span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.kafka<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>kafka_2.10<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>0.10.0.1<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">scope</span>&gt;</span>compile<span class="hljs-tag">&lt;/<span class="hljs-name">scope</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">exclusions</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">exclusion</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.zookeeper<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>zookeeper<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;/<span class="hljs-name">exclusion</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">exclusion</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>jmxri<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>com.sun.jmx<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;/<span class="hljs-name">exclusion</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">exclusion</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>jms<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>javax.jms<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;/<span class="hljs-name">exclusion</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">exclusion</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>jmxtools<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>com.sun.jdmk<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;/<span class="hljs-name">exclusion</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">exclusion</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.slf4j<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>slf4j-log4j12<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;/<span class="hljs-name">exclusion</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">exclusion</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.slf4j<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>slf4j-api<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;/<span class="hljs-name">exclusion</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">exclusion</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>log4j<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>log4j<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;/<span class="hljs-name">exclusion</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">exclusion</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>junit<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>junit<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;/<span class="hljs-name">exclusion</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">exclusions</span>&gt;</span><br><span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br><span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>com.google.code.gson<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>gson<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>2.2.4<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br><span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br></code></pre></td></tr></table></figure>
+
+<p>分别是<em>单元测试</em>、<em>storm核心依赖包</em>、<em>storm-kafka消息队列依赖包</em>及<em>gson解析包</em>，这些依赖关系中存在较多版本冲突、依赖重复等问题，需要指定剔除部分依赖。</p>
+<p>在国内可能无法下载到相关依赖包（尤其像storm核心包如此庞大的体型），此时需要手动安装该依赖包。以storm的核心包为例：</p>
+<p>使用压缩软件从下载的<em>storm-1.02</em>的安装包中拷出<em>storm-core-1.02.jar</em>文件（在<code>lib</code>目录下）到本地磁盘，例如F盘。</p>
+<p>运行命令行，切换到该jar文件所在目录（为方便），使用以下命令安装jar包到maven仓库：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs shell">mvn install:install-file -DgroupId=org.apache.storm -DartifactId=storm-core -Dversion=1.0.2 -Dfile=storm-core-1.0.2.jar -Dpackaging=jar<br></code></pre></td></tr></table></figure>
+
+<p>然后重新加载依赖即可。</p>
+<p>编写代码，主要分为四步：</p>
+<ol>
+<li>从Kafka消息队列取消息</li>
+<li>将消息字符串通过Gson解析为PO日志对象，此时可存储数据库（方法简单，不罗嗦了）</li>
+<li>分字段传递消息到下一个Bolt</li>
+<li>分字段统计PV、UV信息</li>
+</ol>
+<p>所以，项目结构如下：</p>
+<img src="/images/src-storm-nginx-idea-project.png" srcset="/img/loading.gif" lazyload class="" title="项目结构" alt="项目结构">
+
+<p>关键代码，主要为两个<strong>Bolt</strong>和主类：</p>
+<figure class="highlight java"><figcaption><span>LogBolt.Java</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">private</span> <span class="hljs-type">SimpleDateFormat</span> <span class="hljs-variable">format</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">SimpleDateFormat</span>(<span class="hljs-string">&quot;yyyy-MM-dd HH:mm&quot;</span>);<br><span class="hljs-meta">@Override</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">prepare</span><span class="hljs-params">(Map stormConf, TopologyContext context)</span> &#123;<br>    <span class="hljs-comment">//获取数据库JDBC链接信息</span><br>    <span class="hljs-type">String</span> <span class="hljs-variable">mysqlUrl</span> <span class="hljs-operator">=</span> stormConf.get(<span class="hljs-string">&quot;mysql.url&quot;</span>).toString();<br>    <span class="hljs-type">String</span> <span class="hljs-variable">username</span> <span class="hljs-operator">=</span> stormConf.get(<span class="hljs-string">&quot;mysql.username&quot;</span>).toString();<br>    <span class="hljs-type">String</span> <span class="hljs-variable">password</span> <span class="hljs-operator">=</span> stormConf.get(<span class="hljs-string">&quot;mysql.password&quot;</span>).toString();<br>    <span class="hljs-comment">//初始化Mysql连接</span><br>    initConnection(mysqlUrl,username,password);<br>    <span class="hljs-built_in">super</span>.prepare(stormConf, context);<br>&#125;<br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">execute</span><span class="hljs-params">(Tuple input, BasicOutputCollector collector)</span> &#123;<br>    <span class="hljs-type">String</span> <span class="hljs-variable">line</span> <span class="hljs-operator">=</span> input.getString(<span class="hljs-number">0</span>);<br>    <span class="hljs-keyword">if</span>(line.trim().length()&lt;<span class="hljs-number">1</span>)<br>        <span class="hljs-keyword">return</span>;<br>    <span class="hljs-comment">//解析</span><br>    <span class="hljs-type">LogRecord</span> <span class="hljs-variable">record</span> <span class="hljs-operator">=</span> EntityParser.parse(line );<br>    <span class="hljs-comment">//写数据库</span><br>    writeDb(record);<br>    <span class="hljs-comment">//传递至下一个Bolt</span><br>    collector.emit(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Values</span>(format.format(record.getTime_local()),record.getRemote_addr(),String.valueOf(record.getStatus()),<br>            String.valueOf(record.getBody_bytes_sent()),record.getRequest(),record.getHttp_referrer(),record.getHttp_user_agent(),<br>            record.getHttp_x_forwarded_for()));<br>&#125;<br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">declareOutputFields</span><span class="hljs-params">(OutputFieldsDeclarer declarer)</span> &#123;<br>    declarer.declare(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Fields</span>(<span class="hljs-string">&quot;date&quot;</span>, <span class="hljs-string">&quot;ip&quot;</span>, <span class="hljs-string">&quot;status&quot;</span>, <span class="hljs-string">&quot;body_bytes_sent&quot;</span>,<br>                <span class="hljs-string">&quot;request&quot;</span>, <span class="hljs-string">&quot;http_referer&quot;</span>, <span class="hljs-string">&quot;http_user_agent&quot;</span>, <span class="hljs-string">&quot;http_x_forwarded_for&quot;</span>));<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>在<strong>LogBolt</strong>类中，输出字段统一为字符串，而时间字符串则只保留到分钟，以便于在统计PV、UV时通过时间字符串实现每分钟的统计而非原始的每秒钟的统计。</p>
+<figure class="highlight java"><figcaption><span>CountBlot.Java</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">private</span> Map&lt;String, Integer&gt; all = <span class="hljs-keyword">new</span> <span class="hljs-title class_">HashMap</span>&lt;String, Integer&gt;();<br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">execute</span><span class="hljs-params">(Tuple input, BasicOutputCollector collector)</span> &#123;<br>    <span class="hljs-comment">//&quot;date&quot;, &quot;ip&quot;, &quot;status&quot;, &quot;body_bytes_sent&quot;,</span><br>    <span class="hljs-comment">//&quot;request&quot;, &quot;http_referer&quot;, &quot;http_user_agent&quot;, &quot;http_x_forwarded_for&quot;</span><br>    <span class="hljs-type">String</span> <span class="hljs-variable">date</span> <span class="hljs-operator">=</span> input.getStringByField(<span class="hljs-string">&quot;date&quot;</span>);<br>    <span class="hljs-type">String</span> <span class="hljs-variable">ip</span> <span class="hljs-operator">=</span> input.getStringByField(<span class="hljs-string">&quot;ip&quot;</span>);<br>    <span class="hljs-type">String</span> <span class="hljs-variable">status</span> <span class="hljs-operator">=</span> input.getStringByField(<span class="hljs-string">&quot;status&quot;</span>);<br>    <span class="hljs-type">String</span> <span class="hljs-variable">body_bytes_sent</span> <span class="hljs-operator">=</span> input.getStringByField(<span class="hljs-string">&quot;body_bytes_sent&quot;</span>);<br>    <span class="hljs-type">String</span> <span class="hljs-variable">request</span> <span class="hljs-operator">=</span> input.getStringByField(<span class="hljs-string">&quot;request&quot;</span>);<br>    <span class="hljs-type">String</span> <span class="hljs-variable">http_referer</span> <span class="hljs-operator">=</span> input.getStringByField(<span class="hljs-string">&quot;http_referer&quot;</span>);<br>    <span class="hljs-type">String</span> <span class="hljs-variable">http_user_agent</span> <span class="hljs-operator">=</span> input.getStringByField(<span class="hljs-string">&quot;http_user_agent&quot;</span>);<br>    <span class="hljs-type">String</span> <span class="hljs-variable">http_x_forwarded_for</span> <span class="hljs-operator">=</span> input.getStringByField(<span class="hljs-string">&quot;http_x_forwarded_for&quot;</span>);<br>    <span class="hljs-comment">//统计IP的PV/UV</span><br>    countPVUVByIP(date,ip);<br>    <span class="hljs-comment">//还可以统计Status的PV/UV</span><br>    <span class="hljs-comment">//同理</span><br>    <span class="hljs-comment">//进行下一步处理...</span><br>    <span class="hljs-comment">//此处就直接打印结果不做其他处理，可以在输出日志中查看</span><br>    System.out.println(<span class="hljs-string">&quot;======================================================&quot;</span>);<br>    <span class="hljs-keyword">for</span>(String key : all.keySet())&#123;<br>        System.out.println(key+<span class="hljs-string">&quot; = &quot;</span>+all.get(key));<br>    &#125;<br>&#125;<br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">declareOutputFields</span><span class="hljs-params">(OutputFieldsDeclarer declarer)</span> &#123;&#125;<br><span class="hljs-keyword">private</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">countPVUVByIP</span><span class="hljs-params">(String data, String ip)</span>&#123;<br>    <span class="hljs-type">String</span> <span class="hljs-variable">ipkey</span> <span class="hljs-operator">=</span> data+<span class="hljs-string">&quot;_&quot;</span>+ip;<br>    <span class="hljs-type">String</span> <span class="hljs-variable">pvkey</span> <span class="hljs-operator">=</span> data+<span class="hljs-string">&quot;_pv&quot;</span>;<br>    <span class="hljs-type">String</span> <span class="hljs-variable">uvkey</span> <span class="hljs-operator">=</span> data+<span class="hljs-string">&quot;_uv&quot;</span>;<br>    <span class="hljs-type">Integer</span> <span class="hljs-variable">count</span> <span class="hljs-operator">=</span> all.get(ipkey);<br>    <span class="hljs-keyword">if</span>(count==<span class="hljs-literal">null</span>)&#123;<br>        count = <span class="hljs-number">0</span>;<br>    &#125;<br>    all.put(ipkey, ++count);<br>    <span class="hljs-type">Integer</span> <span class="hljs-variable">pv</span> <span class="hljs-operator">=</span> all.get(pvkey);<br>    <span class="hljs-keyword">if</span>(pv==<span class="hljs-literal">null</span>) &#123;<br>        pv = <span class="hljs-number">0</span>;<br>    &#125;<br>    all.put(pvkey,++pv);<br>    <span class="hljs-keyword">if</span>(count&lt;<span class="hljs-number">2</span>)&#123;<br>    <span class="hljs-type">Integer</span> <span class="hljs-variable">uv</span> <span class="hljs-operator">=</span>all.get(uvkey);<br>    <span class="hljs-keyword">if</span>(uv==<span class="hljs-literal">null</span>)&#123;<br>        uv=<span class="hljs-number">0</span>;<br>    &#125;<br>    all.put(uvkey,++uv);<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>从上<strong>CountBolt</strong>类代码，可知通过HashMap进行归类统计数量，实时输出。</p>
+<figure class="highlight java"><figcaption><span>ReadLog.Java</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">main</span><span class="hljs-params">(String[] args)</span> &#123;<br>    <span class="hljs-type">Properties</span> <span class="hljs-variable">prop</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Properties</span>();<br>    <span class="hljs-keyword">try</span> &#123;<br>        prop.load(ReadLog.class.getClassLoader().getResourceAsStream(<span class="hljs-string">&quot;config.properties&quot;</span>));<br>    &#125; <span class="hljs-keyword">catch</span> (IOException e) &#123;<br>        System.out.println(<span class="hljs-string">&quot;error: missing config.properties&quot;</span>);<br>        e.printStackTrace();<br>        System.exit(<span class="hljs-number">1</span>);<br>    &#125;<br>    <span class="hljs-type">SpoutConfig</span> <span class="hljs-variable">config</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">SpoutConfig</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ZkHosts</span>(prop.getProperty(<span class="hljs-string">&quot;zookeeper.server&quot;</span>)), prop.getProperty(<span class="hljs-string">&quot;kafka.topic&quot;</span>),<span class="hljs-string">&quot;/bigdata/nginx&quot;</span>,<span class="hljs-string">&quot;nginx-access&quot;</span>);<br>    config.scheme = <span class="hljs-keyword">new</span> <span class="hljs-title class_">SchemeAsMultiScheme</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">StringScheme</span>());<br>    <span class="hljs-type">TopologyBuilder</span> <span class="hljs-variable">builder</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">TopologyBuilder</span>();<br>    builder.setSpout(<span class="hljs-string">&quot;kafka-spout&quot;</span>, <span class="hljs-keyword">new</span> <span class="hljs-title class_">KafkaSpout</span>(config));<br>    builder.setBolt(<span class="hljs-string">&quot;accesslog-bolt&quot;</span>, <span class="hljs-keyword">new</span> <span class="hljs-title class_">LogBolt</span>()).shuffleGrouping(<span class="hljs-string">&quot;kafka-spout&quot;</span>);<br>    builder.setBolt(<span class="hljs-string">&quot;count-pvuv&quot;</span>,<span class="hljs-keyword">new</span> <span class="hljs-title class_">CountBolt</span>(),<span class="hljs-number">1</span>).shuffleGrouping(<span class="hljs-string">&quot;accesslog-bolt&quot;</span>);<br>    <span class="hljs-type">Config</span> <span class="hljs-variable">stormConfig</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Config</span>();<br>    stormConfig.setNumWorkers(<span class="hljs-number">1</span>);<br>    stormConfig.put(Config.TOPOLOGY_TRIDENT_BATCH_EMIT_INTERVAL_MILLIS, <span class="hljs-number">1000</span>);<br>    stormConfig.setMaxSpoutPending(<span class="hljs-number">10</span>);<br>    stormConfig.put(<span class="hljs-string">&quot;mysql.url&quot;</span>,prop.getProperty(<span class="hljs-string">&quot;mysql.url&quot;</span>));<br>    stormConfig.put(<span class="hljs-string">&quot;mysql.username&quot;</span>,prop.getProperty(<span class="hljs-string">&quot;mysql.username&quot;</span>));<br>    stormConfig.put(<span class="hljs-string">&quot;mysql.password&quot;</span>,prop.getProperty(<span class="hljs-string">&quot;mysql.password&quot;</span>));<br>    String topology_name=prop.getProperty(<span class="hljs-string">&quot;topology.name&quot;</span>);<br>    <span class="hljs-type">StormTopology</span> <span class="hljs-variable">topology</span> <span class="hljs-operator">=</span> builder.createTopology();<br>    <span class="hljs-keyword">if</span>(System.getProperty(<span class="hljs-string">&quot;os.name&quot;</span>).contains(<span class="hljs-string">&quot;Window&quot;</span>))&#123;<br>        <span class="hljs-comment">//Windows环境下本地集群调试</span><br>        <span class="hljs-type">LocalCluster</span> <span class="hljs-variable">cluster</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">LocalCluster</span>();<br>        cluster.submitTopology(topology_name,stormConfig,topology);<br>        <span class="hljs-keyword">try</span> &#123;<br>            Thread.sleep(<span class="hljs-number">600000000L</span>);<br>        &#125; <span class="hljs-keyword">catch</span> (InterruptedException e) &#123;<br>            e.printStackTrace();<br>        &#125;<br>    &#125;<span class="hljs-keyword">else</span> &#123;<br>        <span class="hljs-keyword">try</span> &#123;<br>            StormSubmitter.submitTopology(topology_name,stormConfig,topology);<br>        &#125; <span class="hljs-keyword">catch</span> (Exception e) &#123;<br>            e.printStackTrace();<br>        &#125;<br>    &#125;<br>    System.exit(<span class="hljs-number">0</span>);<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>主类Main方法中读取并加载配置文件，该文件定义了运行此<em>Topology</em>所需的一些参数，比如Kafka消息主题、mysql连接信息等。</p>
+<p>通过maven打jar包，上传到storm集群，并使用 <code>storm jar &lt;jar文件&gt; &lt;主类&gt; </code>命令提交<em>Topology</em>，成功提交后可在Storm的WebUI查看执行状态：</p>
+<img src="/images/src-stormui-storm-idea-nginx-project.png" srcset="/img/loading.gif" lazyload class="" title="Topology 状态" alt="Topology 状态">
+
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/big-data/" class="category-chain-item">big-data</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/linux/">#linux</a>
+      
+        <a href="/tags/distribution/">#distribution</a>
+      
+        <a href="/tags/big-data/">#big-data</a>
+      
+        <a href="/tags/storm/">#storm</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Storm实时处理 – Nginx访问日志</div>
+      <div>https://vicasong.github.io/big-data/storm-nginx-accesslog/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Vica</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2016年9月10日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/python/service-watcher-by-shell/" title="使用脚本监控服务状态">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">使用脚本监控服务状态</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/big-data/hbase-distribute-install/" title="分布式集群手操 – HBase搭建">
+                        <span class="hidden-mobile">分布式集群手操 – HBase搭建</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

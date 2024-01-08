@@ -1,0 +1,894 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Vica">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="本示例通过mapreduce计算任务实现对apache访问日志的解析存储和分析，将分析记录存储于HBase数据库中，该示例只是一个日志处理环节，后续处理可进一步扩充。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Hadoop实战 – Apache访问日志">
+<meta property="og:url" content="https://vicasong.github.io/big-data/hadoop-apache-accesslog/">
+<meta property="og:site_name" content="VicaSong">
+<meta property="og:description" content="本示例通过mapreduce计算任务实现对apache访问日志的解析存储和分析，将分析记录存储于HBase数据库中，该示例只是一个日志处理环节，后续处理可进一步扩充。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://vicasong.github.io/images/src-hadoop-apache-log-grap.png">
+<meta property="og:image" content="https://vicasong.github.io/images/src-hadoop-apache-log-submit-job.png">
+<meta property="og:image" content="https://vicasong.github.io/images/src-hadoop-apache-log-watcher.png">
+<meta property="og:image" content="https://vicasong.github.io/images/src-hadoop-apache-log-habse-count.png">
+<meta property="og:image" content="https://vicasong.github.io/images/src-hadoop-apache-og-result.png">
+<meta property="article:published_time" content="2016-09-22T08:28:42.000Z">
+<meta property="article:modified_time" content="2024-01-08T06:10:56.507Z">
+<meta property="article:author" content="Vica">
+<meta property="article:tag" content="linux">
+<meta property="article:tag" content="distribution">
+<meta property="article:tag" content="big-data">
+<meta property="article:tag" content="hadoop">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://vicasong.github.io/images/src-hadoop-apache-log-grap.png">
+  
+  
+  
+  <title>Hadoop实战 – Apache访问日志 - VicaSong</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"vicasong.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>VicaSong</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Hadoop实战 – Apache访问日志"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2016-09-22 16:28" pubdate>
+          2016年9月22日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          20k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          163 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Hadoop实战 – Apache访问日志</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>本示例通过mapreduce计算任务实现对apache访问日志的解析存储和分析，将分析记录存储于HBase数据库中，该示例只是一个日志处理环节，后续处理可进一步扩充。</p>
+<span id="more"></span>
+
+<h1 id="日志说明"><a href="#日志说明" class="headerlink" title="日志说明"></a>日志说明</h1><p>在apache目录配置文件（<code>/etc/httpd/conf/httpd.conf</code>）中有如下配置：</p>
+<figure class="highlight plaintext"><figcaption><span>httpd.conf</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs conf"># The following directives define some format nicknames for use with<br># a CustomLog directive (see below).<br>#<br>LogFormat &quot;%h %l %u %t \&quot;%r\&quot; %&gt;s %b \&quot;%&#123;Referer&#125;i\&quot; \&quot;%&#123;User-Agent&#125;i\&quot;&quot; combined<br>LogFormat &quot;%h %l %u %t \&quot;%r\&quot; %&gt;s %b&quot; common<br>LogFormat &quot;%&#123;Referer&#125;i -&gt; %U&quot; referer<br>LogFormat &quot;%&#123;User-agent&#125;i&quot; agent<br># For a single logfile with access, agent, and referer information<br># (Combined Logfile Format), use the following directive:<br>#<br>CustomLog logs/access_log combined<br></code></pre></td></tr></table></figure>
+
+<p>该配置启用了名为combined的日志格式</p>
+<p>该格式为<code>%h %l %u %t \&quot;%r\&quot; %&gt;s %b \&quot;%&#123;Referer&#125;i\&quot; \&quot;%&#123;User-Agent&#125;i\&quot;</code></p>
+<p>以下是官方对这些格式字段的描述：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>%%</td>
+<td>百分号(Apache2.0.44或更高的版本)</td>
+</tr>
+<tr>
+<td>%a</td>
+<td>远端IP地址</td>
+</tr>
+<tr>
+<td>%A</td>
+<td>本机IP地址</td>
+</tr>
+<tr>
+<td>%B</td>
+<td>除HTTP头以外传送的字节数</td>
+</tr>
+<tr>
+<td>%b</td>
+<td>以CLF格式显示的除HTTP头以外传送的字节数，也就是当没有字节传送时显示’-‘而不是0。</td>
+</tr>
+<tr>
+<td>%{Foobar}C</td>
+<td>在请求中传送给服务端的cookieFoobar的内容。</td>
+</tr>
+<tr>
+<td>%D</td>
+<td>服务器处理本请求所用时间，以微为单位。</td>
+</tr>
+<tr>
+<td>%{FOOBAR}e</td>
+<td>环境变量FOOBAR的值</td>
+</tr>
+<tr>
+<td>%f</td>
+<td>文件名</td>
+</tr>
+<tr>
+<td>%h</td>
+<td>远端主机</td>
+</tr>
+<tr>
+<td>%H</td>
+<td>请求使用的协议</td>
+</tr>
+<tr>
+<td>%{Foobar}i</td>
+<td>发送到服务器的请求头Foobar:的内容。</td>
+</tr>
+<tr>
+<td>%l</td>
+<td>远端登录名(由identd而来，如果支持的话)，除非IdentityCheck设为”On”，否则将得到一个”-“。</td>
+</tr>
+<tr>
+<td>%m</td>
+<td>请求的方法</td>
+</tr>
+<tr>
+<td>%{Foobar}n</td>
+<td>来自另一个模块的注解Foobar的内容。</td>
+</tr>
+<tr>
+<td>%{Foobar}o</td>
+<td>应答头Foobar:的内容。</td>
+</tr>
+<tr>
+<td>%p</td>
+<td>服务器服务于该请求的标准端口。</td>
+</tr>
+<tr>
+<td>%P</td>
+<td>为本请求提供服务的子进程的PID。</td>
+</tr>
+<tr>
+<td>%{format}P</td>
+<td>服务于该请求的PID或TID(线程ID)，format的取值范围为：pid和tid(2.0.46及以后版本)以及hextid(需要APR1.2.0及以上版本)</td>
+</tr>
+<tr>
+<td>%q</td>
+<td>查询字符串(若存在则由一个”?”引导，否则返回空串)</td>
+</tr>
+<tr>
+<td>%r</td>
+<td>请求的第一行</td>
+</tr>
+<tr>
+<td>%s</td>
+<td>状态。对于内部重定向的请求，这个状态指的是原始请求的状态，—%&gt;s则指的是最后请求的状态。</td>
+</tr>
+<tr>
+<td>%t</td>
+<td>时间，用普通日志时间格式(标准英语格式)</td>
+</tr>
+<tr>
+<td>%{format}t</td>
+<td>时间，用strftime(3)指定的格式表示的时间。(默认情况下按本地化格式)</td>
+</tr>
+<tr>
+<td>%T</td>
+<td>处理完请求所花时间，以秒为单位。</td>
+</tr>
+<tr>
+<td>%u</td>
+<td>远程用户名(根据验证信息而来；如果返回status(%s)为401，可能是假的)</td>
+</tr>
+<tr>
+<td>%U</td>
+<td>请求的URL路径，不包含查询字符串。</td>
+</tr>
+<tr>
+<td>%v</td>
+<td>对该请求提供服务的标准ServerName。</td>
+</tr>
+<tr>
+<td>%V</td>
+<td>根据UseCanonicalName指令设定的服务器名称。</td>
+</tr>
+<tr>
+<td>%X</td>
+<td>请求完成时的连接状态：X&#x3D; 连接在应答完成前中断。 +&#x3D; 应答传送完后继续保持连接。 -&#x3D; 应答传送完后关闭连接。 (在1.3以后的版本中，这个指令是%c，但这样就和过去的SSL语法：%{var}c冲突了)</td>
+</tr>
+<tr>
+<td>%I</td>
+<td>接收的字节数，包括请求头的数据，并且不能为零。要使用这个指令你必须启用mod_logio模块。</td>
+</tr>
+<tr>
+<td>%O</td>
+<td>发送的字节数，包括请求头的数据，并且不能为零。要使用这个指令你必须启用mod_logio模块。</td>
+</tr>
+</tbody></table>
+<p>从上表可得该日志的格式表示为：</p>
+<ul>
+<li>客户端的IP地址。</li>
+<li>由客户端identd进程判断的RFC1413身份(identity),输出中的符号”-“表示此处的信息无效。</li>
+<li>HTTP认证系统得到的访问该网页的客户标识(userid),如果网页没有设置密码保护，则此项将是”-“。</li>
+<li>服务器完成请求处理时的时间。</li>
+<li>客户的动作\请求的资源\使用的协议。</li>
+<li>服务器返回给客户端的状态码。</li>
+<li>返回给客户端的不包括响应头的字节数.如果没有信息返回，则此项应该是”-“。</li>
+<li>“Referer”请求头。</li>
+<li>“User-Agent”请求头。</li>
+</ul>
+<p>例如：</p>
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs accesslog"><span class="hljs-number">103.226.133.67</span> - - <span class="hljs-string">[22/Sep/2016:21:00:39 +0800]</span> <span class="hljs-string">&quot;<span class="hljs-keyword">GET</span> /hbase-distribute/ HTTP/1.1&quot;</span> <span class="hljs-number">200</span> <span class="hljs-number">35477</span> <span class="hljs-string">&quot;-&quot;</span> <span class="hljs-string">&quot;Mozilla/5.0 (Windows NT 10.0; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0&quot;</span><br></code></pre></td></tr></table></figure>
+
+<h1 id="任务分析"><a href="#任务分析" class="headerlink" title="任务分析"></a>任务分析</h1><p>使用hadoop MapReduce任务解析日志并存入Hbase。</p>
+<h2 id="功能需求"><a href="#功能需求" class="headerlink" title="功能需求"></a>功能需求</h2><ul>
+<li>日志解析</li>
+<li>存储</li>
+<li>分析</li>
+</ul>
+<h2 id="业务步骤"><a href="#业务步骤" class="headerlink" title="业务步骤"></a>业务步骤</h2><ul>
+<li>读取日子记录</li>
+<li>解析日志记录</li>
+<li>存储已解析内容</li>
+<li>读取已解析内容</li>
+<li>分析数据</li>
+<li>存储结果</li>
+</ul>
+<p>如图，分两个mapreduce来完成，第一个只有map用于解析，第二个使用map加载，reduce计数。后续的分析也依赖前面的解析操作。</p>
+<img src="/images/src-hadoop-apache-log-grap.png" srcset="/img/loading.gif" lazyload class="" title="业务流程" alt="业务流程">
+
+
+<h1 id="HTable表设计"><a href="#HTable表设计" class="headerlink" title="HTable表设计"></a>HTable表设计</h1><p>由于只是存储网站每小时（RowKey）访问流量信息，故只需一个表示数量的列簇，同时，为了网站访问分析（比如热点分析），增加一个列簇表示最大流量的标识（如连接地址、访问IP等）。</p>
+<p>此处是预先设计的HTable结构的层次示意，Table结构如下：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs text">access-info<br>  |--datetime(key)            #日期时间为RowKey<br>  |    |--counter             #流量计数列簇<br>  |    |    |--page           #页面访问量列<br>  |    |    |--user           #用户访问量列<br>  |    |    |--post           #POST请求量列<br>  |    |    |--get            #GET请求量列<br>  |    |    |--put            #PUT请求量列<br>  |    |    |--delete         #DELETE请求量列<br>  |    |    |--error          #错误解析（一般认为脚本攻击）列<br>  |    |    |--connect<br>  |    |    |--other<br>  |    |    ...<br>  |    |--max                 #最多访问列簇<br>  |    |    |--page           #最多访问页列<br>  |    |    |--ip             #最多IP访问列<br></code></pre></td></tr></table></figure>
+
+
+<p>使用命令以创建该表（或在程序中运行创建）</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">create</span> <span class="hljs-string">&#x27;access-info&#x27;</span>,&#123;NAME<span class="hljs-operator">=</span><span class="hljs-operator">&gt;</span><span class="hljs-string">&#x27;counter&#x27;</span>,VERSIONS<span class="hljs-operator">=</span><span class="hljs-operator">&gt;</span><span class="hljs-number">1</span>&#125;,&#123;NAME<span class="hljs-operator">=</span><span class="hljs-operator">&gt;</span><span class="hljs-string">&#x27;max&#x27;</span>,VERSIONS<span class="hljs-operator">=</span><span class="hljs-operator">&gt;</span><span class="hljs-number">10</span>&#125;<br></code></pre></td></tr></table></figure>
+
+<h1 id="编程实现"><a href="#编程实现" class="headerlink" title="编程实现"></a>编程实现</h1><h2 id="初始部分"><a href="#初始部分" class="headerlink" title="初始部分"></a>初始部分</h2><p><strong>日志记录在整个分析中，起到POJO的作用，因此先封装一个日志记录对象</strong></p>
+<figure class="highlight java"><figcaption><span>LogRecord.java</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">LogRecord</span> &#123;<br>    <span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-type">SimpleDateFormat</span> <span class="hljs-variable">format</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">SimpleDateFormat</span>(<span class="hljs-string">&quot;d/MMM/yy:HH:mm:ss Z&quot;</span>, Locale.ENGLISH);<br>    <span class="hljs-keyword">private</span> String ip;<br>    <span class="hljs-keyword">private</span> String loginName;<br>    <span class="hljs-keyword">private</span> String userName;<br>    <span class="hljs-keyword">private</span> Date dateTime;<br>    <span class="hljs-keyword">private</span> String method;<br>    <span class="hljs-keyword">private</span> String url;<br>    <span class="hljs-keyword">private</span> String protocol;<br>    <span class="hljs-keyword">private</span> <span class="hljs-type">int</span> stateCode;<br>    <span class="hljs-keyword">private</span> <span class="hljs-type">long</span> responseLength;<br>    <span class="hljs-keyword">private</span> String referFrom;<br>    <span class="hljs-keyword">private</span> String userAgent;<br>    <span class="hljs-keyword">private</span> String unhandled;<br>    <span class="hljs-comment">// 以下省去get/set方法</span><br>    <span class="hljs-comment">// ...</span><br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>代码定义了日志记录的每一个元素属性，为了便于日期格式的转换，静态定义了一个私有<code>SimpleDateFormat</code>，同时额外增加了一个<code>unhandled</code>属性用于存储异常的格式解析。</p>
+<p><strong>日志的解析首先应该想到字符串的截取操作，匹配模式，对，就是正则表达式</strong></p>
+<figure class="highlight java"><figcaption><span>LogAnalyser.java</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">LogAnalyser</span> &#123;<br>    <span class="hljs-comment">/*</span><br><span class="hljs-comment">    正则的一些说明</span><br><span class="hljs-comment">    ^ :匹配每一行的开头。</span><br><span class="hljs-comment">    ^([0-9.]+)\s :匹配IP地址，\s匹配不可见字符，例如空格、制表符等。</span><br><span class="hljs-comment">    ([\w.&quot;-]+)\s :匹配identity，由下划线在内的任何单词字符（包括数字）或点引号杠组成。</span><br><span class="hljs-comment">    ([\w.&quot;-]+)\s :匹配userid。</span><br><span class="hljs-comment">    \[([^\[\]]+)\]\s :匹配时间，匹配外围的中括号且内部不存在中括号。</span><br><span class="hljs-comment">    &quot;(.+)&quot;\s :匹配请求信息，匹配外围双引号，匹配内部任意字符。</span><br><span class="hljs-comment">    (\d&#123;3&#125;)\s :匹配状态码，三个长度的数字。</span><br><span class="hljs-comment">    (\d+|-)\s :匹配响应字节数或-。</span><br><span class="hljs-comment">    &quot;((?:[^&quot;]|\&quot;-)*)&quot;\s :匹配&quot;Referer&quot;请求头，双引号中可能出现转义的双引号\&quot;。</span><br><span class="hljs-comment">    &quot;((?:[^&quot;]|\&quot;-)*)&quot; :匹配&quot;User-Agent&quot;请求头。</span><br><span class="hljs-comment">    $ :匹配行尾。</span><br><span class="hljs-comment">     */</span><br>    <span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-type">String</span> <span class="hljs-variable">regx</span> <span class="hljs-operator">=</span> <span class="hljs-string">&quot;^([0-9.]+)\\s([\\w.\&quot;-]+)\\s([\\w.\&quot;-]+)\\s\\[([^\\[\\]]+)\\]\\s\&quot;(.+)\&quot;\\s(\\d&#123;3&#125;)\\s(\\d+|-)\\s\&quot;((?:[^\&quot;]|\\\&quot;-)*)\&quot;\\s\&quot;((?:[^\&quot;]|\\\&quot;-)*)\&quot;$&quot;</span>;<br>    <span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-type">Pattern</span> <span class="hljs-variable">pattern</span> <span class="hljs-operator">=</span> Pattern.compile(regx);<br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> LogRecord <span class="hljs-title function_">read</span><span class="hljs-params">(String source)</span>&#123;<br>        <span class="hljs-type">Matcher</span> <span class="hljs-variable">matcher</span> <span class="hljs-operator">=</span> pattern.matcher(source);<br>        <span class="hljs-keyword">if</span>(!matcher.matches()|| matcher.groupCount()!=<span class="hljs-number">9</span>)&#123;<br>            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">IllegalArgumentException</span>(<span class="hljs-string">&quot;error input format, source is : &quot;</span>+source);<br>        &#125;<span class="hljs-keyword">else</span> &#123;<br>            <span class="hljs-type">LogRecord</span> <span class="hljs-variable">record</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">LogRecord</span>();<br>            record.setIp(matcher.group(<span class="hljs-number">1</span>));<br>            record.setLoginName(matcher.group(<span class="hljs-number">2</span>).replaceAll(<span class="hljs-string">&quot;-&quot;</span>,<span class="hljs-string">&quot;&quot;</span>));<br>            record.setUserName(matcher.group(<span class="hljs-number">3</span>).replaceAll(<span class="hljs-string">&quot;-&quot;</span>,<span class="hljs-string">&quot;&quot;</span>));<br>            record.setDateTime(matcher.group(<span class="hljs-number">4</span>));<br>            String[] tmp = matcher.group(<span class="hljs-number">5</span>).split(<span class="hljs-string">&quot; &quot;</span>);<br>            <span class="hljs-keyword">if</span>(tmp.length!=<span class="hljs-number">3</span>)&#123;<br>                record.setUrl(matcher.group(<span class="hljs-number">5</span>));<br>                <span class="hljs-comment">//throw new IllegalArgumentException(&quot;the %r (RequestHeader) format error, source is : &quot;+source);</span><br>            &#125;<span class="hljs-keyword">else</span> &#123;<br>                record.setMethod(tmp[<span class="hljs-number">0</span>]);<br>                record.setUrl(tmp[<span class="hljs-number">1</span>]);<br>                record.setProtocol(tmp[<span class="hljs-number">2</span>]);<br>            &#125;<br>            record.setStateCode(Integer.parseInt(matcher.group(<span class="hljs-number">6</span>).replace(<span class="hljs-string">&#x27;-&#x27;</span>,<span class="hljs-string">&#x27;0&#x27;</span>)));<br>            record.setResponseLength(Long.parseLong(matcher.group(<span class="hljs-number">7</span>).replace(<span class="hljs-string">&#x27;-&#x27;</span>,<span class="hljs-string">&#x27;0&#x27;</span>)));<br>            record.setReferFrom(matcher.group(<span class="hljs-number">8</span>));<br>            record.setUserAgent(matcher.group(<span class="hljs-number">9</span>));<br>            <span class="hljs-keyword">return</span> record;<br>        &#125;<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>如上代码，通过<strong>正则表达式匹配</strong>，获取各匹配组，按顺序赋值到日志记录对象。但注意，此处有坑，如果正则表达式效率不高，则会在一些匹配组长度上出现堆栈溢出，了解正则匹配原理后对正则表达式优化才能解决该问题。但实际问题实际对待，由于日志记录的解析操作仅仅是字符串的拆分，如果没有很优秀的正则技巧，考虑字符串截取处理会更高效，针对该日志类型，记录字符串起始段有固定格式（<code>主机IP</code>、<code>标识</code>、<code>用户</code>、<code>固定格式的时间</code>），而中间段（<code>请求信息</code>）具有不确定性，因为在大量日志记录分析中看到，该段内容一般为较长且包含大量不规则字符（包括各种符号）的连接，也有可能为一堆脚本（站点扫描、检测、攻击等），但比起尾段（<code>状态码</code>、<code>字节数</code>、<code>Refer</code>、<code>User-Agent</code>）更加具有不可预见性，所以在字符串截取时应该优先处理格式可知的字段，从两端向中间截取，最后剩下不可预知的中间段，对其单独处理即可。</p>
+<p><strong>解析后的数据如何存储？</strong></p>
+<p>需要按时段分析，每小时的网站流量，那么利用mapreduce的<em>shuffle</em>按时间（精确到小时）排序存储即可，所以键确定就是时间字段，值则是解析结果。对于结果的存储，由于结果是一个PO对象，可以考虑序列化存储，使用<em>BytesWritable</em>？可以考虑，但我更倾向于封装适合自己的，于是新建一个<code>LogRecordWritable</code>，实现<code>Writable</code>接口即可，序列化使用protostuff，比protobuf使用简单，尤其是不用自己写schema。</p>
+<figure class="highlight java"><figcaption><span>LogRecordWritable.java</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">LogRecordWritable</span> <span class="hljs-keyword">implements</span> <span class="hljs-title class_">Writable</span> &#123;<br>    <span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> RuntimeSchema&lt;LogRecord&gt; schema = RuntimeSchema.createFrom(LogRecord.class);<br>    <span class="hljs-keyword">private</span> LogRecord record;<br>    <span class="hljs-keyword">private</span> <span class="hljs-type">BytesWritable</span> <span class="hljs-variable">data</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">BytesWritable</span>();<br>    <span class="hljs-keyword">public</span> LogRecord <span class="hljs-title function_">getRecord</span><span class="hljs-params">()</span> &#123;<br>        <span class="hljs-keyword">return</span> record;<br>    &#125;<br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">read</span><span class="hljs-params">(<span class="hljs-type">byte</span>[] data)</span>&#123;<br>        record = schema.newMessage();<br>        ProtostuffIOUtil.mergeFrom(data,record,schema);<br>    &#125;<br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">setRecord</span><span class="hljs-params">(LogRecord record)</span> &#123;<br>        <span class="hljs-built_in">this</span>.record = record;<br>    &#125;<br>    <span class="hljs-meta">@Override</span><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">write</span><span class="hljs-params">(DataOutput dataOutput)</span> <span class="hljs-keyword">throws</span> IOException &#123;<br>        <span class="hljs-type">byte</span>[] data = ProtostuffIOUtil.toByteArray(record,schema, LinkedBuffer.allocate(LinkedBuffer.DEFAULT_BUFFER_SIZE));<br>        <span class="hljs-built_in">this</span>.data.set(data,<span class="hljs-number">0</span>,data.length);<br>        <span class="hljs-built_in">this</span>.data.write(dataOutput);<br>    &#125;<br>    <span class="hljs-meta">@Override</span><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">readFields</span><span class="hljs-params">(DataInput dataInput)</span> <span class="hljs-keyword">throws</span> IOException &#123;<br>        <span class="hljs-built_in">this</span>.data.readFields(dataInput);<br>        <span class="hljs-built_in">this</span>.data.setCapacity(<span class="hljs-built_in">this</span>.data.getLength());<br>        <span class="hljs-type">byte</span>[] data = <span class="hljs-built_in">this</span>.data.getBytes();<br>        record = schema.newMessage();<br>        ProtostuffIOUtil.mergeFrom(data,record,schema);<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p><strong>巨坑预警</strong>，使用序列化的数据写入<code>DataOutput</code>和读取<code>DataInput</code>会出现数据不一致的情况，读取数据明显会比写入的多，需要先<code>setCapacity</code>再读取字节反序列化，原因参考接口的实现类（<code>DataInputStram</code>）源码，这里就不废话了。</p>
+<h2 id="解析存储"><a href="#解析存储" class="headerlink" title="解析存储"></a>解析存储</h2><p>第一个mapreduce任务，只有mapper，将一条条的字符串记录解析为日期时间和LogRecordWritable的键值对，存储为序列化文件（便于压缩处理和传输）</p>
+<figure class="highlight java"><figcaption><span>Extracter.java</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">ExtractMapper</span> <span class="hljs-keyword">extends</span> <span class="hljs-title class_">Mapper</span>&lt;Object, Text, Text, LogRecordWritable&gt; &#123;<br>        <span class="hljs-keyword">final</span> <span class="hljs-type">SimpleDateFormat</span> <span class="hljs-variable">format</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">SimpleDateFormat</span>(<span class="hljs-string">&quot;yyyy-MM-dd-HH&quot;</span>);<br>        <span class="hljs-type">LogRecordWritable</span> <span class="hljs-variable">logRecordWritable</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">LogRecordWritable</span>();<br>        <span class="hljs-type">Text</span> <span class="hljs-variable">date</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Text</span>();<br>        <span class="hljs-meta">@Override</span><br>        <span class="hljs-keyword">protected</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">map</span><span class="hljs-params">(Object key, Text value, Context context)</span> <span class="hljs-keyword">throws</span> IOException, InterruptedException &#123;<br>            <span class="hljs-type">String</span> <span class="hljs-variable">source</span> <span class="hljs-operator">=</span> value.toString();<br>            <span class="hljs-keyword">if</span> (source != <span class="hljs-literal">null</span> &amp;&amp; source.length() &gt; <span class="hljs-number">0</span>) &#123;<br>                <span class="hljs-keyword">try</span> &#123;<br>                    <span class="hljs-type">LogRecord</span> <span class="hljs-variable">record</span> <span class="hljs-operator">=</span> LogAnalyser.read(source);<br>                    date.set(format.format(record.getDateTime()));<br>                    logRecordWritable.setRecord(record);<br>                &#125; <span class="hljs-keyword">catch</span> (Exception e) &#123;<br>                    <span class="hljs-type">LogRecord</span> <span class="hljs-variable">record</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">LogRecord</span>();<br>                    record.setUnhandled(source);<br>                    logRecordWritable.setRecord(record);<br>                    date.clear();<br>                    date.set(<span class="hljs-string">&quot;error&quot;</span>);<br>                &#125;<br>                context.write(date, logRecordWritable);<br>            &#125;<br>        &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+
+<p>使用精确到小时的时间字符串格式，这里要考虑其他情况，比如脚本攻击产生的访问记录就有点不规则，归类到error列。</p>
+<h2 id="分析存储"><a href="#分析存储" class="headerlink" title="分析存储"></a>分析存储</h2><p>第二个mapreduce任务，mapper加载上一个任务解析的结果，reducer统计流量数并存储到HBase数据库</p>
+<figure class="highlight java"><figcaption><span>Loader.java</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">LoadMapper</span> <span class="hljs-keyword">extends</span> <span class="hljs-title class_">Mapper</span>&lt;Text, LogRecordWritable, Text, LogRecordWritable&gt; &#123;<br>    <span class="hljs-meta">@Override</span><br>    <span class="hljs-keyword">protected</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">map</span><span class="hljs-params">(Text key, LogRecordWritable value, Context context)</span> <span class="hljs-keyword">throws</span> IOException, InterruptedException &#123;<br>        context.write(key,value);<br>    &#125;<br>&#125;<br><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">CounterReducer</span> <span class="hljs-keyword">extends</span> <span class="hljs-title class_">TableReducer</span>&lt;Text, LogRecordWritable, ImmutableBytesWritable&gt;&#123;<br>    <span class="hljs-meta">@Override</span><br>    <span class="hljs-keyword">protected</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">reduce</span><span class="hljs-params">(Text key, Iterable&lt;LogRecordWritable&gt; values, Context context)</span> <span class="hljs-keyword">throws</span> IOException, InterruptedException &#123;<br>        Map&lt;String,Integer&gt; count = <span class="hljs-keyword">new</span> <span class="hljs-title class_">HashMap</span>&lt;String, Integer&gt;();<br>        Map&lt;String,Integer&gt; users = <span class="hljs-keyword">new</span> <span class="hljs-title class_">HashMap</span>&lt;String, Integer&gt;();<br>        Map&lt;String,Integer&gt; pages = <span class="hljs-keyword">new</span> <span class="hljs-title class_">HashMap</span>&lt;String, Integer&gt;();<br>        <span class="hljs-type">int</span> pv=<span class="hljs-number">0</span>;<br>        <span class="hljs-keyword">for</span>(LogRecordWritable writable:values)&#123;<br>            String mk=<span class="hljs-literal">null</span>;<br>            <span class="hljs-type">LogRecord</span> <span class="hljs-variable">record</span> <span class="hljs-operator">=</span> writable.getRecord();<br>            <span class="hljs-keyword">if</span>(record.getUnhandled()!=<span class="hljs-literal">null</span>)&#123;<br>                mk=<span class="hljs-string">&quot;error&quot;</span>;<br>            &#125;<span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span>(record.getUrl().startsWith(<span class="hljs-string">&quot;/&quot;</span>))&#123;<br>                users.put(record.getIp(),users.get(record.getIp())!=<span class="hljs-literal">null</span>?(users.get(record.getIp())+<span class="hljs-number">1</span>):<span class="hljs-number">1</span>);<br>                pages.put(record.getUrl(),pages.get(record.getUrl())!=<span class="hljs-literal">null</span>?(pages.get(record.getUrl())+<span class="hljs-number">1</span>):<span class="hljs-number">1</span>);<br>                mk=record.getMethod()!=<span class="hljs-literal">null</span>?record.getMethod().toLowerCase():<span class="hljs-literal">null</span>;<br>                pv++;<br>            &#125;<span class="hljs-keyword">else</span> &#123;<br>                mk=<span class="hljs-string">&quot;other&quot;</span>;<br>            &#125;<br>            count.put(mk,count.get(mk)!=<span class="hljs-literal">null</span>?(count.get(mk)+<span class="hljs-number">1</span>):<span class="hljs-number">1</span>);<br>        &#125;<br>        <span class="hljs-type">Put</span> <span class="hljs-variable">put</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Put</span>(key.getBytes());<br>        <span class="hljs-keyword">for</span>(String column : count.keySet())&#123;<br>            <span class="hljs-keyword">if</span>(column!=<span class="hljs-literal">null</span>)&#123;<br>                put.addColumn(Bytes.toBytes(<span class="hljs-string">&quot;counter&quot;</span>),Bytes.toBytes(column),Bytes.toBytes(String.valueOf(count.get(column))));<br>            &#125;<br>        &#125;<br>        <span class="hljs-type">int</span> <span class="hljs-variable">uv</span> <span class="hljs-operator">=</span> users.size();<br>        put.addColumn(Bytes.toBytes(<span class="hljs-string">&quot;counter&quot;</span>),Bytes.toBytes(<span class="hljs-string">&quot;user&quot;</span>),Bytes.toBytes(String.valueOf(uv)));<br>        put.addColumn(Bytes.toBytes(<span class="hljs-string">&quot;counter&quot;</span>),Bytes.toBytes(<span class="hljs-string">&quot;page&quot;</span>),Bytes.toBytes(String.valueOf(pv)));<br>        put.addColumn(Bytes.toBytes(<span class="hljs-string">&quot;max&quot;</span>),Bytes.toBytes(<span class="hljs-string">&quot;page&quot;</span>),Bytes.toBytes(max(pages)));<br>        put.addColumn(Bytes.toBytes(<span class="hljs-string">&quot;max&quot;</span>),Bytes.toBytes(<span class="hljs-string">&quot;ip&quot;</span>),Bytes.toBytes(max(users)));<br>        context.write(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ImmutableBytesWritable</span>(key.getBytes()),put);<br>    &#125;<br>    <span class="hljs-keyword">private</span> String <span class="hljs-title function_">max</span><span class="hljs-params">(Map&lt;String,Integer&gt; map)</span>&#123;<br>        <span class="hljs-type">int</span> <span class="hljs-variable">val</span> <span class="hljs-operator">=</span> <span class="hljs-number">0</span>;<br>        <span class="hljs-type">String</span> <span class="hljs-variable">max</span> <span class="hljs-operator">=</span> <span class="hljs-string">&quot;-&quot;</span>;<br>        <span class="hljs-keyword">for</span>(String key:map.keySet())&#123;<br>             <span class="hljs-keyword">if</span>(map.get(key)&gt;val)&#123;<br>                val = map.get(key);<br>                max = key;<br>             &#125;<br>        &#125;<br>        <span class="hljs-keyword">return</span> max;<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p><strong>此处有坑</strong>，将结果统一转换为字符串再转Bytes存储，否则就需要区别对待，直接全<code>Bytes.toString()</code>是不行的。</p>
+<h2 id="主函数实现"><a href="#主函数实现" class="headerlink" title="主函数实现"></a>主函数实现</h2><figure class="highlight java"><figcaption><span>Parser.java</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">main</span><span class="hljs-params">(String[] args)</span> <span class="hljs-keyword">throws</span> IOException, ClassNotFoundException, InterruptedException &#123;<br>        properties = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Properties</span>();<br>        <span class="hljs-keyword">try</span> &#123;<br>            properties.load(Parser.class.getClassLoader().getResourceAsStream(<span class="hljs-string">&quot;conf.properties&quot;</span>));<br>        &#125; <span class="hljs-keyword">catch</span> (IOException e) &#123;<br>            logger.error(e.getMessage(),e);<br>            System.exit(<span class="hljs-number">1</span>);<br>        &#125;<br>        <span class="hljs-type">Configuration</span> <span class="hljs-variable">conf</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Configuration</span>();<br>        conf.set(<span class="hljs-string">&quot;fs.defaultFS&quot;</span>,properties.getProperty(<span class="hljs-string">&quot;fs.defaultFS&quot;</span>));<br>        conf.set(<span class="hljs-string">&quot;hbase.zookeeper.quorum&quot;</span>,  properties.getProperty(<span class="hljs-string">&quot;hbase.zookeeper.quorum&quot;</span>));<br>        <span class="hljs-keyword">if</span>(args.length&gt;<span class="hljs-number">1</span>) &#123;<br>            <span class="hljs-type">Job</span> <span class="hljs-variable">analysis</span> <span class="hljs-operator">=</span> Job.getInstance(conf);<br>            analysis.setMapperClass(Extracter.ExtractMapper.class);<br>            analysis.setOutputKeyClass(Text.class);<br>            analysis.setOutputValueClass(LogRecordWritable.class);<br>            analysis.setJarByClass(Parser.class);<br>            analysis.setOutputFormatClass(SequenceFileOutputFormat.class);<br>            analysis.setNumReduceTasks(<span class="hljs-number">0</span>);<br>            FileInputFormat.addInputPath(analysis, <span class="hljs-keyword">new</span> <span class="hljs-title class_">Path</span>(args[<span class="hljs-number">0</span>]));<br>            FileOutputFormat.setOutputPath(analysis, <span class="hljs-keyword">new</span> <span class="hljs-title class_">Path</span>(args[<span class="hljs-number">1</span>]));<br>            <span class="hljs-type">Job</span> <span class="hljs-variable">counter</span> <span class="hljs-operator">=</span> Job.getInstance(conf);<br>            counter.setMapperClass(Extracter.LoadMapper.class);<br>            counter.setMapOutputKeyClass(Text.class);<br>            counter.setMapOutputValueClass(LogRecordWritable.class);<br>            counter.setJarByClass(Parser.class);<br>            counter.setInputFormatClass(SequenceFileInputFormat.class);<br>            counter.setNumReduceTasks(<span class="hljs-number">1</span>);<br>            TableMapReduceUtil.initTableReducerJob(<span class="hljs-string">&quot;access-info&quot;</span>, Loader.CounterReducer.class, counter);<br>            FileInputFormat.addInputPath(counter, <span class="hljs-keyword">new</span> <span class="hljs-title class_">Path</span>(args[<span class="hljs-number">1</span>]));<br>            <span class="hljs-type">JobControl</span> <span class="hljs-variable">control</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">JobControl</span>(<span class="hljs-string">&quot;apache-log-group&quot;</span>);<br>            <span class="hljs-type">ControlledJob</span> <span class="hljs-variable">job1</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">ControlledJob</span>(conf);<br>            job1.setJob(analysis);<br>            job1.setJobName(<span class="hljs-string">&quot;analysis&quot;</span>);<br>            <span class="hljs-type">ControlledJob</span> <span class="hljs-variable">job2</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">ControlledJob</span>(conf);<br>            job2.setJob(counter);<br>            job2.setJobName(<span class="hljs-string">&quot;counter&quot;</span>);<br>            job2.addDependingJob(job1);<br>            control.addJob(job1);<br>            control.addJob(job2);<br>            <span class="hljs-type">Thread</span> <span class="hljs-variable">thread</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(control);<br>            thread.start();<br>            <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) &#123;<br>                <span class="hljs-keyword">if</span> (control.allFinished()) &#123;<br>                    System.out.println(control.getSuccessfulJobList());<br>                    control.stop();<br>                    System.exit(<span class="hljs-number">0</span>);<br>                &#125; <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (control.getFailedJobList().size() &gt; <span class="hljs-number">0</span>) &#123;<br>                    System.out.println(control.getFailedJobList());<br>                    control.stop();<br>                    System.exit(<span class="hljs-number">1</span>);<br>                &#125;<br>            &#125;<br>        &#125;<span class="hljs-keyword">else</span> &#123;<br>            <span class="hljs-keyword">try</span> &#123;<br>                <span class="hljs-type">String</span> <span class="hljs-variable">tableName</span> <span class="hljs-operator">=</span> <span class="hljs-string">&quot;access-info&quot;</span>;<br>                <span class="hljs-keyword">if</span>(args.length==<span class="hljs-number">1</span>)&#123;<br>                    tableName = args[<span class="hljs-number">0</span>];<br>                &#125;<br>                <span class="hljs-type">Scan</span> <span class="hljs-variable">scan</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Scan</span>();<br>                scan.setMaxVersions(<span class="hljs-number">10</span>);<br>                <span class="hljs-type">Connection</span> <span class="hljs-variable">connection</span> <span class="hljs-operator">=</span> ConnectionFactory.createConnection(conf);<br>                <span class="hljs-type">HTable</span> <span class="hljs-variable">table</span> <span class="hljs-operator">=</span> (HTable) connection.getTable(TableName.valueOf(tableName));<br>                <span class="hljs-type">ResultScanner</span> <span class="hljs-variable">rsc</span> <span class="hljs-operator">=</span> table.getScanner(scan);<br>                <span class="hljs-keyword">for</span> (Result result : rsc) &#123;<br>                    <span class="hljs-comment">//rowKey</span><br>                    System.out.println(<span class="hljs-string">&quot;- &quot;</span>+Bytes.toString(result.getRow()));<br>                    NavigableMap&lt;<span class="hljs-type">byte</span>[], NavigableMap&lt;<span class="hljs-type">byte</span>[], NavigableMap&lt;Long, <span class="hljs-type">byte</span>[]&gt;&gt;&gt; map = result.getMap();<br>                    <span class="hljs-keyword">for</span> (<span class="hljs-type">byte</span>[] key : map.keySet()) &#123;<br>                        <span class="hljs-comment">//columnFamilies</span><br>                        System.out.println(<span class="hljs-string">&quot;   | &quot;</span> + Bytes.toString(key));<br>                        <span class="hljs-keyword">for</span> (<span class="hljs-type">byte</span>[] tk : map.get(key).keySet()) &#123;<br>                            <span class="hljs-comment">//columns</span><br>                            System.out.println(<span class="hljs-string">&quot;      |-- &quot;</span> + Bytes.toString(tk));<br>                            <span class="hljs-keyword">for</span> (Long l : map.get(key).get(tk).keySet()) &#123;<br>                                <span class="hljs-comment">//values and timestamps</span><br>                                System.out.println(<span class="hljs-string">&quot;        |-- value[&quot;</span> + Bytes.toString(map.get(key).get(tk).get(l)) + <span class="hljs-string">&quot;] (timestamp:&quot;</span> + l + <span class="hljs-string">&quot;)&quot;</span>);<br>                            &#125;<br>                        &#125;<br>                    &#125;<br>                &#125;<br>                rsc.close();<br>            &#125; <span class="hljs-keyword">catch</span> (IOException e) &#123;<br>                logger.error(e.getMessage(), e);<br>            &#125;<br>        &#125;<br> &#125;<br></code></pre></td></tr></table></figure>
+
+<p>在主方法中加入了扫描HTable的程序片，完全出于调试的目的，当然可以将其单独写一个方法从Main方法中拿出来，但记得第二个mapreduce任务mapper和reducer输入输出类型不一致，必须设置<code>MapOutPutKey/ValueClass</code>。还可以对输出的序列化文件进行压缩，设置压缩类型和算法，例如按记录压缩，使用Gzip压缩算法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs java">SequenceFileOutputFormat.setOutputCompressionType(analysis, SequenceFile.CompressionType.RECORD);<br>SequenceFileOutputFormat.setOutputCompressorClass(analysis, GzipCodec.class);<br></code></pre></td></tr></table></figure>
+
+<h1 id="运行测试"><a href="#运行测试" class="headerlink" title="运行测试"></a>运行测试</h1><p>打包并上传到hadoop集群运行（记得HBase得有）：</p>
+<img src="/images/src-hadoop-apache-log-submit-job.png" srcset="/img/loading.gif" lazyload class="" title="提交运行作业" alt="提交运行作业">
+
+
+<p>在RM管理页查看Application的运行：</p>
+<img src="/images/src-hadoop-apache-log-watcher.png" srcset="/img/loading.gif" lazyload class="" title="RM管理" alt="RM管理">
+
+
+<p>在HBase Shell中查看表数据记录数：</p>
+<img src="/images/src-hadoop-apache-log-habse-count.png" srcset="/img/loading.gif" lazyload class="" title="表数据量" alt="表数据量">
+
+
+<p>运行表扫描功能，将输出重定向到文件，运行结束后打开文件查看有层次结构的数据：</p>
+<img src="/images/src-hadoop-apache-og-result.png" srcset="/img/loading.gif" lazyload class="" title="表扫描结果" alt="表扫描结果">
+
+
+<p>最后：在实际环境中，数据量很大的情况下应该注意热点写的问题，使用<code>RowKey散列</code>和<code>预分区</code>。</p>
+<h1 id="附"><a href="#附" class="headerlink" title="附"></a>附</h1><p>maven项目依赖：</p>
+<figure class="highlight xml"><figcaption><span>pom.xml</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br></pre></td><td class="code"><pre><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">properties</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">hadoop.version</span>&gt;</span>2.6.4<span class="hljs-tag">&lt;/<span class="hljs-name">hadoop.version</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">hbase.version</span>&gt;</span>1.2.2<span class="hljs-tag">&lt;/<span class="hljs-name">hbase.version</span>&gt;</span><br><span class="hljs-tag">&lt;/<span class="hljs-name">properties</span>&gt;</span><br><span class="hljs-tag">&lt;<span class="hljs-name">dependencies</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>junit<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>junit<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>4.11<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-comment">&lt;!--HBase--&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>commons-io<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>commons-io<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>2.4<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>commons-logging<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>commons-logging<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.1.3<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>log4j<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>log4j<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.2.17<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.hbase<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>hbase-client<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>$&#123;hbase.version&#125;<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>com.google.protobuf<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>protobuf-java<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>2.5.0<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>io.netty<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>netty<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>3.7.0.Final<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.hbase<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>hbase-common<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>$&#123;hbase.version&#125;<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.hbase<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>hbase-protocol<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>$&#123;hbase.version&#125;<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.zookeeper<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>zookeeper<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>3.4.6<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.cloudera.htrace<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>htrace-core<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>2.04<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.codehaus.jackson<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>jackson-mapper-asl<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.9.13<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.codehaus.jackson<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>jackson-core-asl<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.9.13<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.codehaus.jackson<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>jackson-jaxrs<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.9.13<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.codehaus.jackson<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>jackson-xc<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.9.13<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.slf4j<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>slf4j-api<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.7.6<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.slf4j<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>slf4j-log4j12<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.7.5<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.hbase<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>hbase-server<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.2.2<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">exclusions</span>&gt;</span><br>            <span class="hljs-tag">&lt;<span class="hljs-name">exclusion</span>&gt;</span><br>                <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.hadoop<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>                <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>hadoop-hdfs<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>            <span class="hljs-tag">&lt;/<span class="hljs-name">exclusion</span>&gt;</span><br>        <span class="hljs-tag">&lt;/<span class="hljs-name">exclusions</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-comment">&lt;!--Hadoop--&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.hadoop<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>hadoop-client<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>$&#123;hadoop.version&#125;<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>commons-configuration<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>commons-configuration<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.6<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.hadoop<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>hadoop-auth<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>$&#123;hadoop.version&#125;<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.apache.hadoop<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>hadoop-common<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>$&#123;hadoop.version&#125;<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-comment">&lt;!-- Protostuff高效序列化 --&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>com.dyuproject.protostuff<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>protostuff-core<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.0.8<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br>    <span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>com.dyuproject.protostuff<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>protostuff-runtime<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span><br>        <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>1.0.8<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span><br>    <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span><br><span class="hljs-tag">&lt;/<span class="hljs-name">dependencies</span>&gt;</span><br></code></pre></td></tr></table></figure>
+
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/big-data/" class="category-chain-item">big-data</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/linux/">#linux</a>
+      
+        <a href="/tags/distribution/">#distribution</a>
+      
+        <a href="/tags/big-data/">#big-data</a>
+      
+        <a href="/tags/hadoop/">#hadoop</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Hadoop实战 – Apache访问日志</div>
+      <div>https://vicasong.github.io/big-data/hadoop-apache-accesslog/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Vica</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2016年9月22日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/big-data/hadoop-make-install/" title="百般波折的Hadoop编译">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">百般波折的Hadoop编译</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/python/service-watcher-by-shell/" title="使用脚本监控服务状态">
+                        <span class="hidden-mobile">使用脚本监控服务状态</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>
