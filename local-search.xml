@@ -33,7 +33,7 @@
     <link href="/java/upgrade-to-java17/"/>
     <url>/java/upgrade-to-java17/</url>
     
-    <content type="html"><![CDATA[<p>自2014年初发布Java8以来，现如今已经8年了。2018年9月25日，Oralce正式发布了Java11，这是继Java8之后的首个LTS（long-term support：长期支持版本）。而2021年9月又发布了第二个LTS版本：Java17，同时LTS发布节奏从三年缩短到两年。那么，下一个LTS将会是在2023年9月发布的Java21。此时选择从Java8升级，最好的选择就是Java17，Oracle从Oracle JDK 17开始再次提供免费的版本和更新，且支持商用和生产用途。</p><span id="more"></span><p>基于OptaPlanner的用例基准测试表明：</p><ul><li><p>对于默认的G1GC，Java 17 比 Java 11 快 8.66%，比 Java 16 快 2.41%</p></li><li><p>对于ParallelGC，Java 17 比 Java 11 快 6.54%，比 Java 16 快 0.37%</p></li><li><p>从Java 8 到 Java 11，G1GC平均速度改进为16.1%，ParallelGC为4.5%</p></li></ul><p>由于JAVASE已经被移除，相关接口将被<code>jakarta</code>替代，因此部分包将发生变化：<code>javax.*</code> -&gt; <code>jakarta.*</code></p>]]></content>
+    <content type="html"><![CDATA[<p>自2014年初发布Java8以来，现如今已经8年了。2018年9月25日，Oralce正式发布了Java11，这是继Java8之后的首个LTS（long-term support：长期支持版本）。而2021年9月又发布了第二个LTS版本：Java17，同时LTS发布节奏从三年缩短到两年。那么，下一个LTS将会是在2023年9月发布的Java21。此时选择从Java8升级，最好的选择就是Java17，Oracle从Oracle JDK 17开始再次提供免费的版本和更新，且支持商用和生产用途。</p><span id="more"></span><p>基于OptaPlanner的用例基准测试表明：</p><ul><li><p>对于默认的G1GC，Java 17 比 Java 11 快 8.66%，比 Java 16 快 2.41%</p></li><li><p>对于ParallelGC，Java 17 比 Java 11 快 6.54%，比 Java 16 快 0.37%</p></li><li><p>从Java 8 到 Java 11，G1GC平均速度改进为16.1%，ParallelGC为4.5%</p></li></ul><p>由于JAVAEE在java11+已经被移除，相关接口将被<code>jakarta</code>替代，因此部分包将发生变化：<code>javax.*</code> -&gt; <code>jakarta.*</code></p>]]></content>
     
     
     <categories>
@@ -124,15 +124,15 @@
     
     <tags>
       
-      <tag>linux</tag>
-      
-      <tag>distribution</tag>
-      
       <tag>big-data</tag>
       
       <tag>flume</tag>
       
       <tag>kafka</tag>
+      
+      <tag>linux</tag>
+      
+      <tag>distribution</tag>
       
     </tags>
     
@@ -157,15 +157,15 @@
     
     <tags>
       
-      <tag>linux</tag>
-      
-      <tag>distribution</tag>
-      
       <tag>big-data</tag>
       
       <tag>flume</tag>
       
       <tag>kafka</tag>
+      
+      <tag>linux</tag>
+      
+      <tag>distribution</tag>
       
       <tag>storm</tag>
       
@@ -192,11 +192,11 @@
     
     <tags>
       
+      <tag>big-data</tag>
+      
       <tag>linux</tag>
       
       <tag>distribution</tag>
-      
-      <tag>big-data</tag>
       
       <tag>spark</tag>
       
@@ -223,9 +223,9 @@
     
     <tags>
       
-      <tag>linux</tag>
-      
       <tag>big-data</tag>
+      
+      <tag>linux</tag>
       
       <tag>hadoop</tag>
       
@@ -252,11 +252,11 @@
     
     <tags>
       
+      <tag>big-data</tag>
+      
       <tag>linux</tag>
       
       <tag>distribution</tag>
-      
-      <tag>big-data</tag>
       
       <tag>hadoop</tag>
       
@@ -312,11 +312,11 @@
     
     <tags>
       
+      <tag>big-data</tag>
+      
       <tag>linux</tag>
       
       <tag>distribution</tag>
-      
-      <tag>big-data</tag>
       
       <tag>storm</tag>
       
@@ -343,11 +343,11 @@
     
     <tags>
       
+      <tag>big-data</tag>
+      
       <tag>linux</tag>
       
       <tag>distribution</tag>
-      
-      <tag>big-data</tag>
       
       <tag>hbase</tag>
       
@@ -374,11 +374,11 @@
     
     <tags>
       
+      <tag>big-data</tag>
+      
       <tag>linux</tag>
       
       <tag>distribution</tag>
-      
-      <tag>big-data</tag>
       
       <tag>storm</tag>
       
@@ -405,11 +405,11 @@
     
     <tags>
       
+      <tag>big-data</tag>
+      
       <tag>linux</tag>
       
       <tag>distribution</tag>
-      
-      <tag>big-data</tag>
       
       <tag>hive</tag>
       
@@ -436,13 +436,13 @@
     
     <tags>
       
-      <tag>linux</tag>
-      
-      <tag>distribution</tag>
-      
       <tag>big-data</tag>
       
       <tag>kafka</tag>
+      
+      <tag>linux</tag>
+      
+      <tag>distribution</tag>
       
     </tags>
     
@@ -467,11 +467,11 @@
     
     <tags>
       
+      <tag>big-data</tag>
+      
       <tag>linux</tag>
       
       <tag>distribution</tag>
-      
-      <tag>big-data</tag>
       
       <tag>zookeeper</tag>
       
@@ -498,11 +498,11 @@
     
     <tags>
       
+      <tag>big-data</tag>
+      
       <tag>linux</tag>
       
       <tag>distribution</tag>
-      
-      <tag>big-data</tag>
       
       <tag>hadoop</tag>
       
@@ -558,9 +558,9 @@
       
       <tag>linux</tag>
       
-      <tag>vmware</tag>
-      
       <tag>distribution</tag>
+      
+      <tag>vmware</tag>
       
     </tags>
     
