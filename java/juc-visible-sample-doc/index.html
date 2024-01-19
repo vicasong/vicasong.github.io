@@ -29,7 +29,7 @@
 <meta property="og:image" content="https://vicasong.github.io/images/cpu-store-buffer.jpg">
 <meta property="og:image" content="https://vicasong.github.io/images/cache-coherence.jpg">
 <meta property="article:published_time" content="2023-03-27T08:09:55.000Z">
-<meta property="article:modified_time" content="2024-01-19T08:40:51.919Z">
+<meta property="article:modified_time" content="2024-01-19T09:00:08.672Z">
 <meta property="article:author" content="Vica">
 <meta property="article:tag" content="java">
 <meta name="twitter:card" content="summary_large_image">
@@ -306,7 +306,7 @@
 <p><strong>缓存一致性</strong>，即当CPU0对缓存行中的数据做了修改，就要通知其他CPU，例如CPU1，它的缓存行失效了，那么CPU1想要操作该缓存行的数据时就会退行到从下一级存储重新加载数据。</p>
 <p>缓存一致性协议有很多种不同的实现，但此处主要简述一下典型的MESI协议场景。</p>
 <blockquote><p>在MESI协议中，每个缓存行都会有一个固定状态：<code>Modified</code>、<code>Exclusive</code>、<code>Shared</code>、<code>Invalid</code>。</p>
-<p>假设单前有2个CPU核心：A和B</p>
+<p>假设当前有2个CPU核心：A和B</p>
 <ul>
 <li>当A从存储中加载一个变量时，会读取一段连续的数据，即缓存行，该缓存行将会被标记为“<strong>Exclusive</strong>”，此时只有A在操作该缓存行（唯一的数据缓存拷贝，且数据和主内存是一致的），数据会持续保留在缓存中（对缓存的修改不会立即刷新到下级存储，仅在有必要的时候）。</li>
 <li>此时，B也要读取一个变量，刚好和A读取的数据在同一块缓存行中，那么此时B的缓存中也缓存了同样的缓存行，但A、B缓存行都会被标记为“<strong>Shared</strong>”（缓存数据和主内存依旧是保持一致的）。</li>
@@ -475,7 +475,7 @@
 <p>如例3，<code>volatile</code>变量的读取或写入仍然可能会被重新排序，此时需要额外的屏障去阻止CPU或编译器对此的优化排序，此处会添加一个新屏障，就是<code>StoreLoad</code>，该屏障会被添加到写操作之后。</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs java">[LoadStore]<br>[StoreStore]<br>A=tmp1  <span class="hljs-comment">// volatile 写入</span><br>[StoreLoad]<br>tmp2=B  <span class="hljs-comment">// volatile 读取</span><br>[LoadLoad]<br>[LoadStore]<br></code></pre></td></tr></table></figure>
 
-<p><code>StoreLoad</code>屏障同时具备<code>StoreStore</code>、<code>LoadLoad</code>、<code>LoadStore</code>三个屏障的效果，会被编译为<code>MFENCE</code>或<code>lock addl %(RSP),0</code>指令。锁定主线，停止读取操作直到所有缓冲区（注意，CPU寄存器、Store Buffer也算缓冲区）已经刷新，确保了加载的数据全局可见，即数据从缓冲区到内存或CPU缓存。</p>
+<p><code>StoreLoad</code>屏障同时具备<code>StoreStore</code>、<code>LoadLoad</code>、<code>LoadStore</code>三个屏障的效果，会被编译为<code>MFENCE</code>或<code>lock addl %(RSP),0</code>指令。锁定主线，停止读取操作直到所有缓冲区（注意，CPU寄存器、Store Buffer也算缓冲区）已经刷新，确保了加载的数据全局可见。</p>
 <blockquote><p>X86是一种处理器架构，我们用的大多数CPU都是X86架构，Intel和AMD生产的绝大多数CPU，比如奔腾（Pentium），赛扬(Celeron)，酷睿(core)，Xeon等等都是该架构，而X86_64是X86的扩充，并且兼容X86</p>
 </blockquote>
 
