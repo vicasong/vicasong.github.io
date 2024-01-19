@@ -4,11 +4,11 @@
   
   
   <entry>
-    <title>Java共享变量可见性的一些简述</title>
+    <title>Java内存模型及变量可见性的一些简述</title>
     <link href="/java/juc-visible-sample-doc/"/>
     <url>/java/juc-visible-sample-doc/</url>
     
-    <content type="html"><![CDATA[<p>最近有同事在线上遇到多线程共享变量可见性问题，简单处理后，我觉得这些基础应该需要再整理总结一下。（该部分内容需要熟悉JVM并发相关概念和了解JVM解释运行过程，有一定阅读门槛）</p><span id="more"></span><p>由于Java内存模型（JMM）定义了Java程序中变量会存储在主内存中，而每个线程都有自己独立的工作内存，其中保存了当前线程使用到的变量副本。<br>即，不同线程之间是无法访问其他线程的工作内存中的变量的，共享变量在线程之间的传递需要通过主内存完成。同时，因为CUP有很多级缓存（L1 Cache、L2 Cache等），而线程可能运行在不同的CPU核心上，<br>在一个特定时间它们读取到的“内存”内容可能会不一样。</p><p>由此就会引出一个问题，多线程对共享变量修改导致不一致。例如：</p><p>设<code>x=1</code>，线程0、线程1分别计算<code>x=x+1</code>，期望会得到<code>x=3</code>，但实际运行如下：</p><table><thead><tr><th>CPU时间片序号</th><th>线程</th><th>操作</th><th>线程内存</th><th>主内存</th></tr></thead><tbody><tr><td>1</td><td>thread-0</td><td>读取</td><td>x&#x3D;1</td><td>x&#x3D;1</td></tr><tr><td>2</td><td>thread-0</td><td>计算</td><td>x&#x3D;2</td><td>x&#x3D;1</td></tr><tr><td>3</td><td>thread-1</td><td>读取</td><td>x&#x3D;1</td><td>x&#x3D;1</td></tr><tr><td>4</td><td>thread-0</td><td>写回</td><td>x&#x3D;2</td><td>x&#x3D;2</td></tr><tr><td>…</td><td>…</td><td>..</td><td>…</td><td>…</td></tr></tbody></table><p>那么有聪明的小伙伴就说了，我等线程0操作完再继续线程1的计算不就好了嘛：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">private</span> <span class="hljs-type">boolean</span> <span class="hljs-variable">ready</span> <span class="hljs-operator">=</span> <span class="hljs-literal">false</span>;<br><span class="hljs-keyword">private</span> <span class="hljs-type">int</span> <span class="hljs-variable">x</span> <span class="hljs-operator">=</span> <span class="hljs-number">1</span>;   <br><span class="hljs-comment">// 线程0计算</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">first</span><span class="hljs-params">()</span>&#123;<br>    x = x + <span class="hljs-number">1</span>;<br>    ready = <span class="hljs-literal">true</span>;             <br>&#125;<br><span class="hljs-comment">// 线程1计算</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">second</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-keyword">while</span> (!ready) &#123;<br>    &#125;<br>    x = x + <span class="hljs-number">1</span>;<br>&#125;<br></code></pre></td></tr></table></figure><p>但是，此时有一个优化策略就出来搞事了：“指令重排”，即编译器或CPU为了提高程序效率会将部分指令的执行顺序进行调整，也就是指令不一定会按照书写顺序执行：</p><table><thead><tr><th>CPU时间片序号</th><th>线程</th><th>操作</th><th>线程内存</th><th>主内存</th></tr></thead><tbody><tr><td>1</td><td>thread-0</td><td>读取</td><td>x&#x3D;1</td><td>x&#x3D;1</td></tr><tr><td>2</td><td>thread-0</td><td>赋值</td><td>x&#x3D;1, ready&#x3D;true</td><td>x&#x3D;1, ready&#x3D;false</td></tr><tr><td>3</td><td>thread-0</td><td>写回</td><td>x&#x3D;1, ready&#x3D;true</td><td>x&#x3D;1, ready&#x3D;true</td></tr><tr><td>4</td><td>thread-1</td><td>读取</td><td>ready&#x3D;true, x&#x3D;1</td><td>x&#x3D;1, ready&#x3D;true</td></tr><tr><td>5</td><td>thread-0</td><td>计算</td><td>x&#x3D;2, ready&#x3D;true</td><td>x&#x3D;1, ready&#x3D;true</td></tr><tr><td>6</td><td>thread-0</td><td>写回</td><td>x&#x3D;2, ready&#x3D;true</td><td>x&#x3D;2, ready&#x3D;true</td></tr><tr><td>…</td><td>…</td><td>..</td><td>…</td><td>…</td></tr></tbody></table><p>上面的结果不总是会复现（如果你进行一个批量基准测试，就会发现结果各有不同），而且，部分编译器还会对代码进行优化：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-comment">// 优化1</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">second</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-type">boolean</span> <span class="hljs-variable">a1</span> <span class="hljs-operator">=</span> ready;<br>    <span class="hljs-keyword">while</span> (a1) &#123;&#125;<br>    x = x + <span class="hljs-number">1</span>;<br>&#125;<br><span class="hljs-comment">// 优化2</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">second</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-type">boolean</span> <span class="hljs-variable">a1</span> <span class="hljs-operator">=</span> ready;<br>    <span class="hljs-keyword">if</span> (!a1) <span class="hljs-keyword">return</span>;<br>    <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) &#123;&#125;<br>    x = x + <span class="hljs-number">1</span>;<br>&#125;<br></code></pre></td></tr></table></figure><p>那么我们如何才能保证共享变量的可见性呢？</p><h1 id="可见性"><a href="#可见性" class="headerlink" title="可见性"></a>可见性</h1><p>在现代CPU及硬件架构中，缓存一致性协议会保证不同CPU操作的数据缓存始终是一致的。</p><h2 id="缓存一致性"><a href="#缓存一致性" class="headerlink" title="缓存一致性"></a>缓存一致性</h2><h3 id="CPU缓存行"><a href="#CPU缓存行" class="headerlink" title="CPU缓存行"></a>CPU缓存行</h3><p>速度越快的存储，其硬件成本越高。为了权衡成本效益，存储会被分成多层架构：寄存器、一级缓存（L1 Cache）、二级缓存（L2 Cache）、三级缓存（L3 Cache）、内存和硬盘等，其速度、容量和成本依次下降。</p><img src="/images/cpu-cache-grp.jpg" class="" title="存储架构" alt="存储架构"><p>本文，我们主要讨论CPU缓存部分。现代架构的CPU在显微镜下其局部大概是这样的：</p><img src="/images/cpu-cache-mic.jpg" class="" title="CPU显微图局部" alt="CPU显微图局部"><p>可以看到那一块块排列整齐的“建筑区”就是缓存，其示意图大概是这样的：</p><img src="/images/cache-line.jpg" class="" title="缓存行" alt="缓存行"><p>缓存行（Cache Line）是存储交换管理的最小单元。</p><h3 id="缓存一致性协议"><a href="#缓存一致性协议" class="headerlink" title="缓存一致性协议"></a>缓存一致性协议</h3><p>当多个cpu对同一块内存地址进行操作时，即共享数据时，如何保证它们操作的数据的一致性呢？</p><p>缓存一致性，即当CPU0对缓存行中的数据做了修改，就要通知其他CPU，例如CPU1，它的缓存行失效了，那么CPU1想要操作该缓存行的数据时就会退行到从下一级存储重新加载数据。</p><p>缓存一致性协议有很多种不同的实现，但此处主要简述一下典型的MESI协议场景。</p><p>在MESI协议中，每个缓存行都会有一个固定状态：Modified、Exclusive、Shared、Invalid。<br>假设单前有2个CPU核心：A和B，当A从存储中加载一个变量时，会读取一段连续的数据，即缓存行，该缓存行将会被标记为“Exclusive”，此时只有A在操作该缓存行（唯一的数据缓存拷贝，且数据和主内存是一致的），数据会持续保留在缓存中（对缓存的修改不会立即刷新到下级存储，仅在有必要的时候）。<br>此时，B也要读取一个变量，刚好和A读取的数据在同一块缓存行中，那么此时B的缓存中也缓存了同样的缓存行，但A、B缓存行都会被标记为“Shared”（缓存数据和主内存依旧是保持一致的）。<br>然后我们假设A接下来对它读取的变量进行了修改，那么A的缓存行会被标记为“Modified”（此时，该缓存行的数据就和主内存不一致，且仅该缓存行的数据才是最新的），同时A会通知B说你的缓存行过时了，此时B的缓存行会被标记为“Invalid”（此缓存行已过期，缓存的内容不会再被使用）。<br>那么过了一段时间，B要再次读取它的变量了，但B此时的缓存行已经失效了，它应该去下一级存储重新读取数据，B对该数据块的读取访问会强制要求A将“Modified”标记的该缓存行刷新到下一级存储，等数据刷新后B读取到的就是最新的缓存行，此时A、B的缓存行再次被标记为“Shared”。</p><h3 id="伪共享（False-Sharing）"><a href="#伪共享（False-Sharing）" class="headerlink" title="伪共享（False Sharing）"></a>伪共享（False Sharing）</h3><p>而如果它们修改的是缓存行中不同区域的数据时，就会争用同一个缓存行，导致看起来像是争用同一个共享变量一样。</p><img src="/images/cache-coherence.jpg" class="" title="缓存一致性" alt="缓存一致性"><p>缓存行会因此被不停标记为失效，并刷新和重新加载，这会带来性能问题。因此，对于同一块数据块上的不同变量的操作，可以通过填充数据使它们分布到不同的缓存行上来避免此性能问题。</p><h2 id="变量易失性"><a href="#变量易失性" class="headerlink" title="变量易失性"></a>变量易失性</h2><p>那么我们再次使用之前提到的代码，只是稍微简化了一下：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">private</span> <span class="hljs-type">boolean</span> <span class="hljs-variable">ready</span> <span class="hljs-operator">=</span> <span class="hljs-literal">false</span>; <br><span class="hljs-comment">// 线程0</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">first</span><span class="hljs-params">()</span>&#123;<br>    ready = <span class="hljs-literal">true</span>;             <br>&#125;<br><span class="hljs-comment">// 线程1</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">second</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-keyword">while</span> (!ready) &#123;<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure><p>我们有2个线程会分别执行上面的对应方法，如代码所写：线程1将无限循环直到线程0将共享变量<code>ready</code>的值做出修改，从而终止线程1的循环。</p><p>然而事情并没有这么简单，首先每个线程都会有共享变量的副本（JMM）保存在各自的堆栈中，JMM是一个抽象概念，这些数据可能在物理内存中，也可能在CPU缓存或者寄存器中。<br>而当线程0对共享变量进行修改后，线程1并不能看到该变量的修改，它仍将保持无限循环。 </p><p>这里就有人开始困惑了，前面不是说了在硬件层面，CPU缓存会保持一致么，比如：MESI协议。那么线程共享的数据为什么还会不一致呢？<br>问题就在这里，如上所述“缓存一致性”，即是关于CPU缓存的，数据被层层加载到CPU中，每个CPU都有自己的寄存器，缓存会通过MESI等协议保持一致，但寄存器例外。<br>编译器很“聪明”，它认为在单线程下，变量<code>ready</code>不会被修改，此变量会存储在CPU寄存器中，因为寄存器的访问速度要比缓存快的多的多。但现在是多线程环境，编译器也会假设即使是多线程，也不会有数据通信，<br>每个线程都会复制一份数据的副本并存储在寄存器中，如果一个线程访问数据，这份数据刚好存在于寄存器中，那么在其他CPU的线程就无法看到数据的更新。 </p><p>所以，有办法阻止编译器将共享变量存储到寄存器中吗？这就是<code>volatile</code>（具体是如何做的，请继续往下看）.</p><blockquote><p>网络上有很多关于易失性的文章，都提到了<code>volatile</code>会强制让数据交换使用主内存，这是过时或错误的描述，且一直被广泛传播。  </p><ol><li>首先，在Java1.5时代，主流CPU架构中，缓存一致性是可选功能且默认不开启，<code>volatile</code>为此担任了一个重要角色就是使用指令开启缓存一致性。但如今该功能已成为架构中的必选项，缓存一致性是硬件层协议，软件开发者无需额外处理。</li><li><code>volatile</code>不会也无法直接让数据从主内存中读写，因为效率太低了，CPU要等待数据从主内存读取或写入就好像你要从澳洲步行和游泳到俄国北部，和那里的朋友说一句话然后再徒步返回，慢到令人发指。因为如今CPU频率都是至少<code>GHz</code>为单位，而主内存频率只是<code>Mhz</code>，它们速度差距几乎是跨维度的。</li><li>CPU存储架构对其上的应用是透明的，JMM足够抽象，其中的数据可以在任何位置（寄存器、缓存或主内存等等），<code>volatile</code>不能使CPU立即刷新缓存，系统会在必要的时候进行缓存刷新操作，由缓存一致性保证数据在缓存中是始终一致的。</li></ol></blockquote><h1 id="顺序性"><a href="#顺序性" class="headerlink" title="顺序性"></a>顺序性</h1><p>CPU访问一次存储需要花费很长的时间，出于性能优化，程序的读写不一定会按照程序要求的顺序执行。例如：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs java">a=<span class="hljs-number">1</span>;<br>b=<span class="hljs-number">1</span>;<br>b++;<br>a++;<br>b=<span class="hljs-number">5</span>;<br></code></pre></td></tr></table></figure><p>从代码看，如果<code>b=1</code>那么<code>a=1</code>，但实际上面的代码可能会被优化成<code>b=5;a=2</code>。这种优化在单线程看来完全没有问题，但如果变量被多线程共享，那么读写顺序的改变就会导致程序行为出现不一致，为此需要在适当操作的位置放置标记来避免此类优化和重排。</p><p>依旧是<code>volatile</code>，该关键字标记的变量会在编译器或CPU进行指令优化时做出一些限制。涉及到几个屏障（barriers）：<code>LoadStore</code>、<code>LoadLoad</code>、<code>StoreLoad</code>、<code>StoreStore</code>。</p><h2 id="缓存一致性-amp-内存一致性"><a href="#缓存一致性-amp-内存一致性" class="headerlink" title="缓存一致性&amp;内存一致性"></a>缓存一致性&amp;内存一致性</h2><p>缓存一致性协议确保对同一内存位置的读取将始终返回最新的值。仅当存这个同一内存位置的缓存有多个副本时，才需要缓存一致性协议，其工作内容就是保持所有副本的一致性，以下注意区分缓存和缓冲。</p><p>内存一致性模型则关注于读取和写入到不同内存位置的相对顺序，TSO（Total Storage Order）。</p><h2 id="顺序"><a href="#顺序" class="headerlink" title="顺序"></a>顺序</h2><p>由于X86架构CPU提供了TSO，所以<code>LoadStore</code>、<code>LoadLoad</code>、<code>StoreStore</code>这几个屏障相当于空操作，主要用于限制编译器优化，<code>StoreLoad</code>会有额外指令实现。</p><table><thead><tr><th>屏障类型</th><th>示例指令</th><th>说明</th></tr></thead><tbody><tr><td>LoadLoad</td><td>Load1;LoadLoad;Load2</td><td>该屏障确保Load1数据的加载先于Load2及其后所有读取指令的操作</td></tr><tr><td>StoreStore</td><td>Store1;StoreStore;Store2</td><td>该屏障确保Store1的写入操作先于Store2及其后所有写入指令的操作</td></tr><tr><td>LoadStore</td><td>Load1;LoadStore;Store2</td><td>确保Load1的数据加载先于Store2及其后所有的写入指令的操作</td></tr><tr><td>StoreLoad</td><td>Store1;StoreLoad;Load2</td><td>确保Store1的写入操作先于Load2及其后所有读取指令的操作。同时该屏障之前的所有数据访问指令完成之后，才执行该屏障之后的数据访问指令</td></tr></tbody></table><p>先看几个例子（我们假设有<code>volatile</code>变量<code>A</code>、<code>B</code>）：</p><p>1）：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs java">tmp=A <span class="hljs-comment">// volatile 读取</span><br>[LoadLoad]<br>[LoadStore]<br><span class="hljs-comment">// 读读、读写屏障，此时任何读取或写入操作都不能移动到屏障之前，但它们之间的顺序可重排</span><br></code></pre></td></tr></table></figure><p>2）：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-comment">// 读写、写写屏障，此时任何读取或写入操作都不能移动到屏障之后，但它们之间的顺序可重排</span><br>[LoadStore]<br>[StoreStore]<br>B=tmp <span class="hljs-comment">// volatile 写入</span><br></code></pre></td></tr></table></figure><p>3）：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs java">[LoadStore]<br>[StoreStore]<br>A=tmp1  <span class="hljs-comment">// volatile 写入</span><br>tmp2=B  <span class="hljs-comment">// volatile 读取</span><br>[LoadLoad]<br>[LoadStore]<br></code></pre></td></tr></table></figure><p>如例3，<code>volatile</code>变量的读取或写入仍然可能会被重新排序，此时需要额外的屏障去阻止CPU或编译器对此的优化排序，此处会添加一个新屏障，就是<code>StoreLoad</code>，该屏障会被添加到写操作之后。</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs java">[LoadStore]<br>[StoreStore]<br>A=tmp1  <span class="hljs-comment">// volatile 写入</span><br>[StoreLoad]<br>tmp2=B  <span class="hljs-comment">// volatile 读取</span><br>[LoadLoad]<br>[LoadStore]<br></code></pre></td></tr></table></figure><p><code>StoreLoad</code>屏障同时具备<code>StoreStore</code>、<code>LoadLoad</code>、<code>LoadStore</code>三个屏障的效果，会被编译为<code>MFENCE</code>或<code>lock addl %(RSP),0</code>指令。锁定主线，停止读取操作直到所有缓冲区（注意，CPU寄存器也算缓冲区）已经刷新，确保了加载的数据全局可见，即数据从缓冲区到内存或CPU缓存。</p><blockquote><p>X86是一种处理器架构，我们用的大多数CPU都是X86架构，Intel和AMD生产的绝大多数CPU，比如奔腾（Pentium），赛扬(Celeron)，酷睿(core)，Xeon等等都是该架构，而X86_64是X86的扩充，并且兼容X86</p></blockquote><p>综上，你应该在心中有了了解，明白了共享变量可见性和<code>volatile</code>之间的关系。</p><h2 id="补充"><a href="#补充" class="headerlink" title="补充"></a>补充</h2><p>在有些平台的JVM实现中，<code>long</code>、<code>double</code>等64位数据的读写会被拆成两次32位读写操作，在多线程并发下可能会导致读取或写入不一致的问题，使用<code>volatile</code>可以保证该类型变量读写原子性。但实际上是有性能损耗的（<code>volatile</code>还保证了顺序性），即使在X86架构64位机器上，其已经保证了对64bit数据的读取和写入是原子性的，但我们无法保证程序不会在32位机器上运行，所以对<code>long</code>、<code>double</code>使用<code>volatile</code>是有意义的。</p><p>基于上述屏障，在<code>volatile</code>被全局可见时，其之前写入的其他数据也会被刷新，从而全局可见。例如：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs java">a=<span class="hljs-number">2</span>;<br>b=++a;<br>X=<span class="hljs-number">1</span>; <span class="hljs-comment">// volatile 写入</span><br></code></pre></td></tr></table></figure><p>那么其他线程在<code>X=1</code>可见时，其对变量<code>a</code>、<code>b</code>也可见。</p><!--https://software.rajivprab.com/2018/04/29/myths-programmers-believe-about-cpu-caches/--><!--https://shipilev.net/blog/2014/on-the-fence-with-dependencies/--><!--https://aaron-ai.com/docs/cache_consistency_and_memory_barrier/-->]]></content>
+    <content type="html"><![CDATA[<p>最近有同事在线上遇到多线程共享变量可见性问题，简单处理后，我觉得这些基础应该需要再整理总结一下。（该部分内容需要熟悉JVM并发相关概念和了解JVM解释运行过程，有一定阅读门槛）</p><span id="more"></span><p>首先，我们应该先了解一下计算机内存、缓存和CPU之间的关系。</p><h1 id="计算机内存和CPU"><a href="#计算机内存和CPU" class="headerlink" title="计算机内存和CPU"></a>计算机内存和CPU</h1><p>大家都知道，CPU的运行速度很快，而计算机物理内存的读写速度却远远落后于CPU，为此，在CPU和物理内存之间添加了高速缓存来过渡。</p><p>为了权衡成本效益，缓存又被分成多层架构：一级缓存（L1 Cache）、二级缓存（L2 Cache）、三级缓存（L3 Cache），其容量依次变大，速度、和成本依次下降。</p><p>现代架构的CPU在显微镜下其局部大概是这样的：</p><img src="/images/cpu-cache-mic.jpg" class="" title="CPU显微图局部" alt="CPU显微图局部"><p>可以看到那一块块排列整齐的“建筑区”就是缓存，其示意图大概是这样的：</p><img src="/images/cache-line.jpg" class="" title="缓存行" alt="缓存行"><p><strong>缓存行（Cache Line）是存储交换管理的最小单元。</strong></p><p>当CPU要读取数据时，首先会从最近的存储中依次查找（首先是L1 Cache，找不到就去L2 Cache，依次直到找到要读取的数据）：</p><img src="/images/cpu-cache-grp.jpg" class="" title="存储架构" alt="存储架构"><ul><li>单核CPU，只有一个核心，缓存是CPU独占，不会出现访问冲突的问题；</li><li>单核多线程CPU，虽然有多个逻辑核心，但只有一个物理核心，多线程访问共享数据都会映射到相同的缓存位置，而且任何时刻只有一个线程在执行，因此也不会产生冲突；</li><li>多核多线程CPU，那么每一个核心都会有至少一个L1 Cache，多个线程分别在不同的核心上运行，那么每个核心都会保留一份共享数据的缓存，由于多核是并行执行，可能会出现各个核心的缓存数据不一致的冲突。</li></ul><p>为此，就要考虑多线程场景下CPU之间缓存如何保持一致。</p><h2 id="缓存一致性协议"><a href="#缓存一致性协议" class="headerlink" title="缓存一致性协议"></a>缓存一致性协议</h2><p>当多个cpu对同一块内存地址进行操作时，即共享数据时，如何保证它们操作的数据的一致性呢？</p><p><strong>缓存一致性</strong>，即当CPU0对缓存行中的数据做了修改，就要通知其他CPU，例如CPU1，它的缓存行失效了，那么CPU1想要操作该缓存行的数据时就会退行到从下一级存储重新加载数据。</p><p>缓存一致性协议有很多种不同的实现，但此处主要简述一下典型的MESI协议场景。</p><blockquote><p>在MESI协议中，每个缓存行都会有一个固定状态：<code>Modified</code>、<code>Exclusive</code>、<code>Shared</code>、<code>Invalid</code>。</p><p>假设单前有2个CPU核心：A和B</p><ul><li>当A从存储中加载一个变量时，会读取一段连续的数据，即缓存行，该缓存行将会被标记为“<strong>Exclusive</strong>”，此时只有A在操作该缓存行（唯一的数据缓存拷贝，且数据和主内存是一致的），数据会持续保留在缓存中（对缓存的修改不会立即刷新到下级存储，仅在有必要的时候）。</li><li>此时，B也要读取一个变量，刚好和A读取的数据在同一块缓存行中，那么此时B的缓存中也缓存了同样的缓存行，但A、B缓存行都会被标记为“<strong>Shared</strong>”（缓存数据和主内存依旧是保持一致的）。</li><li>然后我们假设A接下来对它读取的变量进行了修改，那么A的缓存行会被标记为“<strong>Modified</strong>”（此时，该缓存行的数据就和主内存不一致，且仅该缓存行的数据才是最新的），同时A会通知B说你的缓存行过时了，此时B的缓存行会被标记为“<strong>Invalid</strong>”（此缓存行已过期，缓存的内容不会再被使用）。</li><li>那么过了一段时间，B要再次读取它的变量了，但B此时的缓存行已经失效了，它应该去下一级存储重新读取数据，B对该数据块的读取访问会强制要求A将“<strong>Modified</strong>”标记的该缓存行刷新到下一级存储，等数据刷新后B读取到的就是最新的缓存行，此时A、B的缓存行再次被标记为“<strong>Shared</strong>”。</li></ul></blockquote><h2 id="处理器优化"><a href="#处理器优化" class="headerlink" title="处理器优化"></a>处理器优化</h2><p>上面提到缓存在多个CPU之间一致性的问题。除了缓存，还有一种硬件问题也需要注意，就是处理器优化。</p><p>为了使CPU的运算单元能被充分使用，处理器就会对代码指令做乱序执行，在单核CPU下这不会有什么问题，结果最终都是一样的，但在多核心下，对共享数据读写的乱序就会导致意想不到的问题。</p><h2 id="缓存之外"><a href="#缓存之外" class="headerlink" title="缓存之外"></a>缓存之外</h2><p>上面也提到了，缓存一致性协议会保证数据在缓存中是一致的。但理论是这样的，实际现实的时候，传统MESI协议中将缓存行（Cache Line）标记为“<strong>Invalid</strong>”和将“<strong>Invalid</strong>”标记的Cache Line刷入新数据的操作花费的成本很高，因此会有一个<strong>Invalidate Queue</strong>队列来异步进行。</p><p>同时，即使是离CPU最近的L1 Cache，依旧需要耗费好几个周期来访问数据，而当缓存写未命中时则从后续级别存储访问的延迟更高，为了追求性能提升，在CPU和L1 Cache之间又加入了一级缓存，称之为<strong>Store Buffer</strong>。但<code>store buffer</code>和其他缓存是有区别的，它只缓存写操作，不管Cache有没有命中，CPU的写操作都会先写入<code>store buffer</code>，之后<code>store buffer</code>会通过<strong>FIFO</strong>（先进先出）的顺序写入Cache。</p><img src="/images/cpu-store-buffer.jpg" class="" title="缓存一致" alt="缓存一致"><p>当CPU0写共享数据时，先发送“<strong>Invalid</strong>”消息，然后把数据写入<code>store buffer</code>（会在某个时刻写入Cache），而读数据时，则先从<code>store buffer</code>中查找（其次再从Cache中查找），此时CPU1是看不到当前CPU0的<code>store buffer</code>中的数据，需要等<code>store buffer</code>刷新到Cache才会触发缓存行失效的操作；</p><p>在CPU1收到“<strong>Invalid</strong>”消息时，会把消息放入“<strong>Invalidate Queue</strong>”，随后异步将对应Cache Line设为“<strong>Invalid</strong>”，和<code>store buffer</code>不同，CPU1读取Cache时并不会查找“<strong>Invalidate Queue</strong>”，所以在这个异步标记Cache Line的过程中就会存在脏读。</p><h1 id="Java内存模型（JMM）"><a href="#Java内存模型（JMM）" class="headerlink" title="Java内存模型（JMM）"></a>Java内存模型（JMM）</h1><p>上面这么多硬件的问题，开发者已经头痛欲裂了。那么我们如何在编写程序的时候不用去过分考虑这么多硬件问题呢？<br>为了共享内存的正确，内存模型定义了多线程读写操作的行为规范，其解决并发问题的主要手段为：<strong>限制处理器优化</strong>、<strong>内存屏障</strong>。</p><p>Java内存模型定义了变量存储在主内存中，每个线程有自己的工作内存，其中保存了该线程使用的变量在主内存的副本拷贝，线程对变量的操作都在工作内存中进行，不能直接访问主内存，因此不同线程间无法直接访问对方工作内存中的变量，线程间共享变量的传递需要在工作内存和主存之间进行数据同步来进行。</p><p>以上提到的工作内存、主内存并非物理概念的内存，而是抽象概念，我们无需关心数据此时在Cache中还是在物理内存中，又或是在<code>store buffer</code>中。那么基于JMM，我们就可以不用管那一堆硬件问题导致的多线程问题，我们只需关注JMM本身即可。</p><p>Java内存模型就作用于工作内存和主内存之间，规定了如何进行数据同步以及什么时候进行，目的是解决多线程共享数据存在的数据不一致、指令重排、乱序执行等带来的问题。</p><h2 id="原子性"><a href="#原子性" class="headerlink" title="原子性"></a>原子性</h2><p>即在一个操作中，不可以被中断操作，要么完全执行，要么完全不执行。</p><p>在Java中使用关键字<code>synchronized</code>，通过对应字节码指令<code>monitorenter</code>和<code>monitorexit</code>来确保代码块的操作是原子的。</p><h2 id="有序性"><a href="#有序性" class="headerlink" title="有序性"></a>有序性</h2><p>上面提到，指令重排，它是一种优化，编译器会对程序指令进行重排优化，和CPU优化的指令乱序执行道理是一样的。</p><p>例如：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">private</span> <span class="hljs-type">boolean</span> <span class="hljs-variable">ready</span> <span class="hljs-operator">=</span> <span class="hljs-literal">false</span>;<br><span class="hljs-keyword">private</span> <span class="hljs-type">int</span> <span class="hljs-variable">x</span> <span class="hljs-operator">=</span> <span class="hljs-number">1</span>;   <br><span class="hljs-comment">// 线程0计算</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">first</span><span class="hljs-params">()</span>&#123;<br>    x = x + <span class="hljs-number">1</span>;<br>    ready = <span class="hljs-literal">true</span>;             <br>&#125;<br><span class="hljs-comment">// 线程1计算</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">second</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-keyword">while</span> (!ready) &#123;<br>    &#125;<br>    x = x + <span class="hljs-number">1</span>;<br>&#125;<br></code></pre></td></tr></table></figure><p>编译优化排序后的指令不一定会按照书写顺序执行：</p><table><thead><tr><th>CPU时间片序号</th><th>线程</th><th>操作</th><th>线程内存</th><th>主内存</th></tr></thead><tbody><tr><td>1</td><td>thread-0</td><td>读取</td><td>x&#x3D;1</td><td>x&#x3D;1</td></tr><tr><td>2</td><td>thread-0</td><td>赋值</td><td>x&#x3D;1, ready&#x3D;true</td><td>x&#x3D;1, ready&#x3D;false</td></tr><tr><td>3</td><td>thread-0</td><td>写回</td><td>x&#x3D;1, ready&#x3D;true</td><td>x&#x3D;1, ready&#x3D;true</td></tr><tr><td>4</td><td>thread-1</td><td>读取</td><td>ready&#x3D;true, x&#x3D;1</td><td>x&#x3D;1, ready&#x3D;true</td></tr><tr><td>5</td><td>thread-0</td><td>计算</td><td>x&#x3D;2, ready&#x3D;true</td><td>x&#x3D;1, ready&#x3D;true</td></tr><tr><td>6</td><td>thread-0</td><td>写回</td><td>x&#x3D;2, ready&#x3D;true</td><td>x&#x3D;2, ready&#x3D;true</td></tr><tr><td>…</td><td>…</td><td>..</td><td>…</td><td>…</td></tr></tbody></table><p>而且，部分编译器还会对代码进行逻辑优化：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-comment">// 优化1</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">second</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-type">boolean</span> <span class="hljs-variable">a1</span> <span class="hljs-operator">=</span> ready;<br>    <span class="hljs-keyword">while</span> (a1) &#123;&#125;<br>    x = x + <span class="hljs-number">1</span>;<br>&#125;<br><span class="hljs-comment">// 优化2</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">second</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-type">boolean</span> <span class="hljs-variable">a1</span> <span class="hljs-operator">=</span> ready;<br>    <span class="hljs-keyword">if</span> (!a1) <span class="hljs-keyword">return</span>;<br>    <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) &#123;&#125;<br>    x = x + <span class="hljs-number">1</span>;<br>&#125;<br></code></pre></td></tr></table></figure><p>为此，我们可以使用<code>synchronized</code>和<code>volatile</code>关键字来确保有序：<code>volatile</code>关键字会限制指令重排和优化，<code>synchronized</code>则保证同一时刻只有一个线程运行指令从而避免。</p><h2 id="可见性"><a href="#可见性" class="headerlink" title="可见性"></a>可见性</h2><p>Java中的<code>volatile</code>关键字提供了一个功能，那就是其修饰的变量被修改后可以立即同步到主内存，其变量在每次读取前都从主内存刷新。</p><p>除了<code>volatile</code>，<code>synchronized</code>和<code>final</code>两个关键字也可以实现可见性，其中<code>synchronized</code>对应的字节码指令<code>monitorenter</code>和<code>monitorexit</code>会分别：</p><ul><li>清空工作内存中共享变量的值，从而使用共享变量时需要从主内存重新读取；</li><li>把工作内存中的共享变量的值写入到主内存。</li></ul><h1 id="扩展"><a href="#扩展" class="headerlink" title="扩展"></a>扩展</h1><h2 id="伪共享（False-Sharing）"><a href="#伪共享（False-Sharing）" class="headerlink" title="伪共享（False Sharing）"></a>伪共享（False Sharing）</h2><p>如果多个变量存在同一缓存行中不同区域时，对不同变量的修改就会争用同一个缓存行，导致看起来像是争用同一个共享变量一样。</p><img src="/images/cache-coherence.jpg" class="" title="缓存一致性" alt="缓存一致性"><p>缓存行会因此被不停标记为失效，并刷新和重新加载，这会带来性能问题。因此，对于同一块数据块上的不同变量的操作，可以通过填充数据使它们分布到不同的缓存行上来避免此性能问题。</p><h2 id="变量易失性"><a href="#变量易失性" class="headerlink" title="变量易失性"></a>变量易失性</h2><p>那么我们再次使用之前提到的代码，只是稍微简化了一下：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">private</span> <span class="hljs-type">boolean</span> <span class="hljs-variable">ready</span> <span class="hljs-operator">=</span> <span class="hljs-literal">false</span>; <br><span class="hljs-comment">// 线程0</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">first</span><span class="hljs-params">()</span>&#123;<br>    ready = <span class="hljs-literal">true</span>;             <br>&#125;<br><span class="hljs-comment">// 线程1</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">second</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-keyword">while</span> (!ready) &#123;<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure><p>我们有2个线程会分别执行上面的对应方法，如代码所写：线程1将无限循环直到线程0将共享变量<code>ready</code>的值做出修改，从而终止线程1的循环。</p><p>然而事情并没有这么简单，首先每个线程都会有共享变量的副本（JMM）保存在各自的堆栈中，而当线程0对共享变量进行修改后，线程1并不能看到该变量的修改，它仍将保持无限循环。 </p><p>而且编译器很“聪明”，它认为在单线程下，变量<code>ready</code>不会被修改，那么此变量可能会存储在CPU寄存器中，因为寄存器的访问速度要比缓存快的多，甚至对条件判断逻辑做出优化。</p><blockquote><p><code>volatile</code>会强制让数据交换使用主内存（JMM抽象概念的主内存，并非物理主内存），这里有几点需要注意。  </p><ol><li>在Java1.5时代，主流CPU架构中，缓存一致性是可选功能且默认不开启，<code>volatile</code>为此担任了一个重要角色就是使用指令开启缓存一致性。但如今该功能已成为架构中的必选项，缓存一致性是硬件层协议，软件开发者无需额外处理。</li><li><code>volatile</code>不会也无法直接让数据从物理内存中读写，因为效率太低了。</li><li>CPU存储架构对其上的应用是透明的，JMM足够抽象，<code>volatile</code>不能使CPU立即刷新缓存，系统会在必要的时候进行缓存刷新操作，由缓存一致性保证数据在缓存中是始终一致的。</li></ol></blockquote><p>同时<code>volatile</code>关键字标记的变量会在编译器或CPU进行指令优化时做出一些限制。涉及到几个屏障（barriers）：<code>LoadStore</code>、<code>LoadLoad</code>、<code>StoreLoad</code>、<code>StoreStore</code>。</p><h3 id="缓存一致性-amp-内存一致性"><a href="#缓存一致性-amp-内存一致性" class="headerlink" title="缓存一致性&amp;内存一致性"></a>缓存一致性&amp;内存一致性</h3><p>缓存一致性协议确保对同一内存位置的读取将始终返回最新的值。仅当同一内存位置的缓存有多个副本时，才需要缓存一致性协议，其工作内容就是保持所有数据副本在缓存中的一致性。</p><p>内存一致性模型则关注于读取和写入到不同内存位置的相对顺序，完全存储定序，<strong>TSO（Total Storage Order）</strong>。</p><p>我们定义读取操作为<em>load</em>，写入操作为<em>store</em>，由于<code>store buffer</code>的存在，CPU对数据的写操作其他CPU并不能及时看见。</p><p>例如：</p><figure class="highlight abnf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs abnf"><span class="hljs-attribute">y</span><span class="hljs-operator">=</span><span class="hljs-number">2</span><span class="hljs-comment">;</span><br><span class="hljs-attribute">a</span><span class="hljs-operator">=</span>x<span class="hljs-comment">;</span><br></code></pre></td></tr></table></figure><p>即使CPU0做了先<code>store y</code>，再<code>load x</code>，在CPU1看来就是先<code>load x</code>，再<code>store y</code>。因此<code>StoreLoad</code>可能会变成<code>LoadStore</code>。</p><p>由于X86架构CPU提供了TSO，所以<code>LoadStore</code>、<code>LoadLoad</code>、<code>StoreStore</code>这几个屏障相当于空操作，主要用于限制编译器优化，<code>StoreLoad</code>会有额外指令实现。</p><table><thead><tr><th>屏障类型</th><th>示例指令</th><th>说明</th></tr></thead><tbody><tr><td>LoadLoad</td><td>Load1;LoadLoad;Load2</td><td>该屏障确保Load1数据的加载先于Load2及其后所有读取指令的操作</td></tr><tr><td>StoreStore</td><td>Store1;StoreStore;Store2</td><td>该屏障确保Store1的写入操作先于Store2及其后所有写入指令的操作</td></tr><tr><td>LoadStore</td><td>Load1;LoadStore;Store2</td><td>确保Load1的数据加载先于Store2及其后所有的写入指令的操作</td></tr><tr><td>StoreLoad</td><td>Store1;StoreLoad;Load2</td><td>确保Store1的写入操作先于Load2及其后所有读取指令的操作。同时该屏障之前的所有数据访问指令完成之后，才执行该屏障之后的数据访问指令</td></tr></tbody></table><p>先看几个例子（我们假设有<code>volatile</code>变量<code>A</code>、<code>B</code>）：</p><p>1）：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs java">tmp=A <span class="hljs-comment">// volatile 读取</span><br>[LoadLoad]<br>[LoadStore]<br><span class="hljs-comment">// 读读、读写屏障，此时任何读取或写入操作都不能移动到屏障之前，但它们之间的顺序可重排</span><br></code></pre></td></tr></table></figure><p>2）：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs java"><span class="hljs-comment">// 读写、写写屏障，此时任何读取或写入操作都不能移动到屏障之后，但它们之间的顺序可重排</span><br>[LoadStore]<br>[StoreStore]<br>B=tmp <span class="hljs-comment">// volatile 写入</span><br></code></pre></td></tr></table></figure><p>3）：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs java">[LoadStore]<br>[StoreStore]<br>A=tmp1  <span class="hljs-comment">// volatile 写入</span><br>tmp2=B  <span class="hljs-comment">// volatile 读取</span><br>[LoadLoad]<br>[LoadStore]<br></code></pre></td></tr></table></figure><p>如例3，<code>volatile</code>变量的读取或写入仍然可能会被重新排序，此时需要额外的屏障去阻止CPU或编译器对此的优化排序，此处会添加一个新屏障，就是<code>StoreLoad</code>，该屏障会被添加到写操作之后。</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs java">[LoadStore]<br>[StoreStore]<br>A=tmp1  <span class="hljs-comment">// volatile 写入</span><br>[StoreLoad]<br>tmp2=B  <span class="hljs-comment">// volatile 读取</span><br>[LoadLoad]<br>[LoadStore]<br></code></pre></td></tr></table></figure><p><code>StoreLoad</code>屏障同时具备<code>StoreStore</code>、<code>LoadLoad</code>、<code>LoadStore</code>三个屏障的效果，会被编译为<code>MFENCE</code>或<code>lock addl %(RSP),0</code>指令。锁定主线，停止读取操作直到所有缓冲区（注意，CPU寄存器、Store Buffer也算缓冲区）已经刷新，确保了加载的数据全局可见，即数据从缓冲区到内存或CPU缓存。</p><blockquote><p>X86是一种处理器架构，我们用的大多数CPU都是X86架构，Intel和AMD生产的绝大多数CPU，比如奔腾（Pentium），赛扬(Celeron)，酷睿(core)，Xeon等等都是该架构，而X86_64是X86的扩充，并且兼容X86</p></blockquote><h2 id="补充"><a href="#补充" class="headerlink" title="补充"></a>补充</h2><p>在有些平台的JVM实现中，<code>long</code>、<code>double</code>等64位数据的读写会被拆成两次32位读写操作，在多线程并发下可能会导致读取或写入不一致的问题，使用<code>volatile</code>可以保证该类型变量读写原子性。但实际上是有性能损耗的（<code>volatile</code>还保证了顺序性），即使在X86架构64位机器上，其已经保证了对64bit数据的读取和写入是原子性的，但我们无法保证程序不会在32位机器上运行，所以对<code>long</code>、<code>double</code>使用<code>volatile</code>是有意义的。</p><p>基于上述屏障，在<code>volatile</code>被全局可见时，其之前写入的其他数据也会被刷新，从而全局可见。例如：</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs java">a=<span class="hljs-number">2</span>;<br>b=++a;<br>X=<span class="hljs-number">1</span>; <span class="hljs-comment">// volatile 写入</span><br></code></pre></td></tr></table></figure><p>那么其他线程在<code>X=1</code>可见时，其对变量<code>a</code>、<code>b</code>也可见。</p><!--https://software.rajivprab.com/2018/04/29/myths-programmers-believe-about-cpu-caches/--><!--https://shipilev.net/blog/2014/on-the-fence-with-dependencies/--><!--https://aaron-ai.com/docs/cache_consistency_and_memory_barrier/-->]]></content>
     
     
     <categories>
@@ -124,15 +124,15 @@
     
     <tags>
       
+      <tag>linux</tag>
+      
+      <tag>distribution</tag>
+      
       <tag>big-data</tag>
       
       <tag>flume</tag>
       
       <tag>kafka</tag>
-      
-      <tag>linux</tag>
-      
-      <tag>distribution</tag>
       
     </tags>
     
@@ -157,15 +157,15 @@
     
     <tags>
       
+      <tag>linux</tag>
+      
+      <tag>distribution</tag>
+      
       <tag>big-data</tag>
       
       <tag>flume</tag>
       
       <tag>kafka</tag>
-      
-      <tag>linux</tag>
-      
-      <tag>distribution</tag>
       
       <tag>storm</tag>
       
@@ -192,11 +192,11 @@
     
     <tags>
       
-      <tag>big-data</tag>
-      
       <tag>linux</tag>
       
       <tag>distribution</tag>
+      
+      <tag>big-data</tag>
       
       <tag>spark</tag>
       
@@ -223,9 +223,9 @@
     
     <tags>
       
-      <tag>big-data</tag>
-      
       <tag>linux</tag>
+      
+      <tag>big-data</tag>
       
       <tag>hadoop</tag>
       
@@ -252,11 +252,11 @@
     
     <tags>
       
-      <tag>big-data</tag>
-      
       <tag>linux</tag>
       
       <tag>distribution</tag>
+      
+      <tag>big-data</tag>
       
       <tag>hadoop</tag>
       
@@ -312,11 +312,11 @@
     
     <tags>
       
-      <tag>big-data</tag>
-      
       <tag>linux</tag>
       
       <tag>distribution</tag>
+      
+      <tag>big-data</tag>
       
       <tag>storm</tag>
       
@@ -343,11 +343,11 @@
     
     <tags>
       
-      <tag>big-data</tag>
-      
       <tag>linux</tag>
       
       <tag>distribution</tag>
+      
+      <tag>big-data</tag>
       
       <tag>hbase</tag>
       
@@ -374,11 +374,11 @@
     
     <tags>
       
-      <tag>big-data</tag>
-      
       <tag>linux</tag>
       
       <tag>distribution</tag>
+      
+      <tag>big-data</tag>
       
       <tag>storm</tag>
       
@@ -405,11 +405,11 @@
     
     <tags>
       
-      <tag>big-data</tag>
-      
       <tag>linux</tag>
       
       <tag>distribution</tag>
+      
+      <tag>big-data</tag>
       
       <tag>hive</tag>
       
@@ -436,13 +436,13 @@
     
     <tags>
       
-      <tag>big-data</tag>
-      
-      <tag>kafka</tag>
-      
       <tag>linux</tag>
       
       <tag>distribution</tag>
+      
+      <tag>big-data</tag>
+      
+      <tag>kafka</tag>
       
     </tags>
     
@@ -467,11 +467,11 @@
     
     <tags>
       
-      <tag>big-data</tag>
-      
       <tag>linux</tag>
       
       <tag>distribution</tag>
+      
+      <tag>big-data</tag>
       
       <tag>zookeeper</tag>
       
@@ -498,11 +498,11 @@
     
     <tags>
       
-      <tag>big-data</tag>
-      
       <tag>linux</tag>
       
       <tag>distribution</tag>
+      
+      <tag>big-data</tag>
       
       <tag>hadoop</tag>
       
@@ -558,9 +558,9 @@
       
       <tag>linux</tag>
       
-      <tag>distribution</tag>
-      
       <tag>vmware</tag>
+      
+      <tag>distribution</tag>
       
     </tags>
     
