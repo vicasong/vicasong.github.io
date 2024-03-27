@@ -29,7 +29,7 @@
 <meta property="og:image" content="https://vicasong.github.io/images/cpu-store-buffer.jpg">
 <meta property="og:image" content="https://vicasong.github.io/images/cache-coherence.jpg">
 <meta property="article:published_time" content="2023-03-27T08:09:55.000Z">
-<meta property="article:modified_time" content="2024-01-19T09:00:08.672Z">
+<meta property="article:modified_time" content="2024-03-27T03:27:40.241Z">
 <meta property="article:author" content="Vica">
 <meta property="article:tag" content="java">
 <meta name="twitter:card" content="summary_large_image">
@@ -226,7 +226,7 @@
       <span class="post-meta mr-2">
         <i class="iconfont icon-chart"></i>
         
-          6.7k 字
+          7.5k 字
         
       </span>
     
@@ -237,7 +237,7 @@
         
         
         
-          56 分钟
+          63 分钟
         
       </span>
     
@@ -319,7 +319,8 @@
 <h2 id="处理器优化"><a href="#处理器优化" class="headerlink" title="处理器优化"></a>处理器优化</h2><p>上面提到缓存在多个CPU之间一致性的问题。除了缓存，还有一种硬件问题也需要注意，就是处理器优化。</p>
 <p>为了使CPU的运算单元能被充分使用，处理器就会对代码指令做乱序执行，在单核CPU下这不会有什么问题，结果最终都是一样的，但在多核心下，对共享数据读写的乱序就会导致意想不到的问题。</p>
 <h2 id="缓存之外"><a href="#缓存之外" class="headerlink" title="缓存之外"></a>缓存之外</h2><p>上面也提到了，缓存一致性协议会保证数据在缓存中是一致的。但理论是这样的，实际现实的时候，传统MESI协议中将缓存行（Cache Line）标记为“<strong>Invalid</strong>”和将“<strong>Invalid</strong>”标记的Cache Line刷入新数据的操作花费的成本很高，因此会有一个<strong>Invalidate Queue</strong>队列来异步进行。</p>
-<p>同时，即使是离CPU最近的L1 Cache，依旧需要耗费好几个周期来访问数据，而当缓存写未命中时则从后续级别存储访问的延迟更高，为了追求性能提升，在CPU和L1 Cache之间又加入了一级缓存，称之为<strong>Store Buffer</strong>。但<code>store buffer</code>和其他缓存是有区别的，它只缓存写操作，不管Cache有没有命中，CPU的写操作都会先写入<code>store buffer</code>，之后<code>store buffer</code>会通过<strong>FIFO</strong>（先进先出）的顺序写入Cache。</p>
+<p>同时，即使是离CPU最近的L1 Cache，依旧需要耗费好几个周期来访问数据，而当缓存写共享数据时的延迟更高，为了追求性能提升，在CPU和L1 Cache之间又加入了一层缓冲，称之为<strong>Store Buffer</strong>。但<code>store buffer</code>和其他缓存是有区别的，它只缓存写操作，CPU的部分写操作会先写入<code>store buffer</code>，之后<code>store buffer</code>会通过<strong>FIFO</strong>（先进先出）的顺序写入Cache。</p>
+<p>上面两个额外的缓冲队列会导致数据加载或写入顺序出现乱序。</p>
 <img src="/images/cpu-store-buffer.jpg" srcset="/img/loading.gif" lazyload class="" title="缓存一致" alt="缓存一致">
 
 
@@ -416,7 +417,7 @@
 
 <p>我们有2个线程会分别执行上面的对应方法，如代码所写：线程1将无限循环直到线程0将共享变量<code>ready</code>的值做出修改，从而终止线程1的循环。</p>
 <p>然而事情并没有这么简单，首先每个线程都会有共享变量的副本（JMM）保存在各自的堆栈中，而当线程0对共享变量进行修改后，线程1并不能看到该变量的修改，它仍将保持无限循环。 </p>
-<p>而且编译器很“聪明”，它认为在单线程下，变量<code>ready</code>不会被修改，那么此变量可能会存储在CPU寄存器中，因为寄存器的访问速度要比缓存快的多，甚至对条件判断逻辑做出优化。</p>
+<p>而且编译器很“聪明”，它认为在单线程下，变量<code>ready</code>不会被修改，甚至对条件判断逻辑做出优化。</p>
 <blockquote><p><code>volatile</code>会强制让数据交换使用主内存（JMM抽象概念的主内存，并非物理主内存），这里有几点需要注意。  </p>
 <ol>
 <li>在Java1.5时代，主流CPU架构中，缓存一致性是可选功能且默认不开启，<code>volatile</code>为此担任了一个重要角色就是使用指令开启缓存一致性。但如今该功能已成为架构中的必选项，缓存一致性是硬件层协议，软件开发者无需额外处理。</li>
@@ -480,7 +481,24 @@
 </blockquote>
 
 
-
+<h3 id="内存屏障"><a href="#内存屏障" class="headerlink" title="内存屏障"></a>内存屏障</h3><p>如上面所述，既然提到了内存屏障，自然会提到Java API提供的几种屏障：</p>
+<ol>
+<li>VarHandle#acquireFence &#x3D; loadFence</li>
+</ol>
+<p>对应指令<code>lfence</code>，实现Load屏障，实现方式按架构不同，如：将<strong>Invalidate Queue</strong>失效，强制读L1 Cache，且等待之前的读取完成，从而确保之后的读不会调度到<code>lfence</code>之前</p>
+<ol start="2">
+<li>VarHandle#releaseFence &#x3D; storeFence</li>
+</ol>
+<p>对应指令<code>sfence</code>，实现Store屏障，实现方式按架构不同，如：将等待<strong>store buffer</strong>中的缓冲刷新到L1 Cache，从而确保后续写不会调度到<code>sfence</code>之前；但一直等待缓冲刷新会很不效率，有些实现会将后续写无论是否命中Cache都加入<strong>store buffer</strong>，但会对这些写进行标记，在标记过的写刷入Cache之前，<code>sfence</code>之前的写一定已经刷入Cache了，从而确保后续写不会调度到<code>sfence</code>之前</p>
+<ol start="3">
+<li>VarHandle#fullFence &#x3D; fullFence</li>
+</ol>
+<p>对应指令<code>mfence</code>，有些平台会对应<code>lock</code>。首先<code>mfence</code>实现了Full屏障，会同时刷新<strong>store buffer</strong>和<strong>Invalidate Queue</strong>，即实现了Load和Store屏障的效果；而<code>lock</code>指令修饰的操作会锁定，只能由当前CPU访问，这个修饰会让指令原子化，且自带Full屏障的效果。同时，有些平台上IO操作、<code>exch</code>原子交换等指令也带有该内存屏障的效果。</p>
+<p>同时注意，Full屏障并不能单纯的组合<code>lfence</code>和<code>sfence</code>，因为组合这两个屏障只能解决指令重排的问题，依然会有可见性问题存在，可以视为<code>lfence</code>和<code>sfence</code>也能被重排。</p>
+<ol start="4">
+<li>VarHandle#loadLoadFence &#x3D; loadLoadFence &#x2F; VarHandle#storeStoreFence &#x3D; storeStoreFence</li>
+</ol>
+<p>用于编译调整，实际实现指向<code>lfence</code>和<code>sfence</code></p>
 <h2 id="补充"><a href="#补充" class="headerlink" title="补充"></a>补充</h2><p>在有些平台的JVM实现中，<code>long</code>、<code>double</code>等64位数据的读写会被拆成两次32位读写操作，在多线程并发下可能会导致读取或写入不一致的问题，使用<code>volatile</code>可以保证该类型变量读写原子性。但实际上是有性能损耗的（<code>volatile</code>还保证了顺序性），即使在X86架构64位机器上，其已经保证了对64bit数据的读取和写入是原子性的，但我们无法保证程序不会在32位机器上运行，所以对<code>long</code>、<code>double</code>使用<code>volatile</code>是有意义的。</p>
 <p>基于上述屏障，在<code>volatile</code>被全局可见时，其之前写入的其他数据也会被刷新，从而全局可见。例如：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs java">a=<span class="hljs-number">2</span>;<br>b=++a;<br>X=<span class="hljs-number">1</span>; <span class="hljs-comment">// volatile 写入</span><br></code></pre></td></tr></table></figure>
